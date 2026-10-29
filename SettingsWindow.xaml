@@ -1,0 +1,457 @@
+<Window x:Class="Thokolosi.SettingsWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="Thokolosi - Settings" Width="720" Height="760" WindowStartupLocation="CenterScreen"
+        Background="{StaticResource Bg}" Topmost="True"
+        Icon="pack://application:,,,/Assets/thokolosi.ico">
+    <Window.Resources>
+        <Style TargetType="TextBlock">
+            <Setter Property="Foreground" Value="{StaticResource Text}"/>
+            <Setter Property="FontSize" Value="13"/>
+        </Style>
+        <Style x:Key="H" TargetType="TextBlock">
+            <Setter Property="Foreground" Value="{StaticResource Text}"/>
+            <Setter Property="FontSize" Value="13"/>
+            <Setter Property="FontWeight" Value="SemiBold"/>
+            <Setter Property="Margin" Value="0,10,0,4"/>
+        </Style>
+        <Style x:Key="Hint" TargetType="TextBlock">
+            <Setter Property="Foreground" Value="{StaticResource Muted}"/>
+            <Setter Property="FontSize" Value="11.5"/>
+            <Setter Property="TextWrapping" Value="Wrap"/>
+            <Setter Property="Margin" Value="0,3,0,6"/>
+        </Style>
+        <Style TargetType="TextBox">
+            <Setter Property="Background" Value="#241F33"/>
+            <Setter Property="Foreground" Value="{StaticResource Text}"/>
+            <Setter Property="CaretBrush" Value="{StaticResource Text}"/>
+            <Setter Property="BorderBrush" Value="#3A3350"/>
+            <Setter Property="Padding" Value="6,5"/>
+            <Setter Property="FontSize" Value="13"/>
+        </Style>
+        <Style TargetType="PasswordBox">
+            <Setter Property="Background" Value="#241F33"/>
+            <Setter Property="Foreground" Value="{StaticResource Text}"/>
+            <Setter Property="CaretBrush" Value="{StaticResource Text}"/>
+            <Setter Property="BorderBrush" Value="#3A3350"/>
+            <Setter Property="Padding" Value="6,5"/>
+        </Style>
+        <Style TargetType="CheckBox">
+            <Setter Property="Foreground" Value="{StaticResource Text}"/>
+            <Setter Property="FontSize" Value="13"/>
+            <Setter Property="Margin" Value="0,4,0,2"/>
+        </Style>
+        <Style TargetType="ComboBox">
+            <Setter Property="FontSize" Value="13"/>
+        </Style>
+        <Style TargetType="TabItem">
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="TabItem">
+                        <Border x:Name="b" Padding="12,7" Margin="0,0,4,0" CornerRadius="8,8,0,0" Background="Transparent">
+                            <ContentPresenter ContentSource="Header" TextElement.Foreground="#8C84A3" TextElement.FontSize="13"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsSelected" Value="True">
+                                <Setter TargetName="b" Property="Background" Value="#241F33"/>
+                                <Setter TargetName="b" Property="TextElement.Foreground" Value="White"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+        <Style TargetType="ScrollViewer">
+            <Setter Property="VerticalScrollBarVisibility" Value="Auto"/>
+        </Style>
+    </Window.Resources>
+
+    <Grid Margin="16">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+
+        <TabControl Background="#1B1726" BorderBrush="#2E2840" Padding="16">
+            <!-- ================= General ================= -->
+            <TabItem Header="General">
+                <ScrollViewer>
+                    <StackPanel>
+                        <TextBlock Style="{StaticResource H}" Text="Claude API key" Margin="0,0,0,4"/>
+                        <PasswordBox x:Name="ApiKeyBox"/>
+                        <TextBlock Style="{StaticResource Hint}" x:Name="KeyHint"/>
+
+                        <TextBlock Style="{StaticResource H}" Text="Model"/>
+                        <ComboBox x:Name="ModelBox" IsEditable="True">
+                            <ComboBoxItem Content="claude-sonnet-5-5"/>
+                            <ComboBoxItem Content="claude-opus-5-5"/>
+                            <ComboBoxItem Content="claude-haiku-5-5"/>
+                        </ComboBox>
+                        <TextBlock Style="{StaticResource Hint}" Text="Sonnet is the best everyday balance. Opus is the strongest but costs more. Haiku is cheapest."/>
+
+                        <CheckBox x:Name="AutoBox" Content="Auto mode: act without asking me first"/>
+                        <CheckBox x:Name="SilentBox" Content="Silent mode: work invisibly (hidden windows, headless browser)"/>
+                        <CheckBox x:Name="StartupBox" Content="Start Thokolosi when I sign in to Windows"/>
+                        <TextBlock Style="{StaticResource Hint}" Text="Even in Auto mode, very risky commands (formatting disks, recursive deletes, force-push, shutdown...) still ask. Edit AlwaysConfirmPatterns in config.json to change the list."/>
+
+                        <TextBlock Style="{StaticResource H}" Text="Code folders (one per line)"/>
+                        <TextBox x:Name="CodeFoldersBox" AcceptsReturn="True" Height="60" VerticalScrollBarVisibility="Auto"/>
+                        <TextBlock Style="{StaticResource Hint}" Text="Where your repos live. For GitHub, install the GitHub CLI (winget install GitHub.cli) and run 'gh auth login' once; Thokolosi then uses it."/>
+
+                        <StackPanel Orientation="Horizontal" Margin="0,8,0,0">
+                            <Button Style="{StaticResource PillButton}" Background="#2E2840" Content="Open data folder" Click="OpenData_Click" Margin="0,0,8,0"/>
+                            <Button Style="{StaticResource PillButton}" Background="#2E2840" Content="Edit config.json" Click="EditConfig_Click"/>
+                        </StackPanel>
+                    </StackPanel>
+                </ScrollViewer>
+            </TabItem>
+
+            <!-- ================= Job ================= -->
+            <TabItem Header="Job">
+                <DockPanel>
+                    <TextBlock DockPanel.Dock="Top" Style="{StaticResource Hint}" Margin="0,0,0,8"
+                               Text="Plain instructions: who Thokolosi works for, what it's responsible for on this PC, and rules it must follow. It reads this before every task, including scheduled ones."/>
+                    <TextBox x:Name="JobBox" AcceptsReturn="True" AcceptsTab="True" TextWrapping="Wrap"
+                             VerticalScrollBarVisibility="Auto" FontFamily="Cascadia Mono, Consolas" FontSize="12.5"/>
+                </DockPanel>
+            </TabItem>
+
+            <!-- ================= Email & Slack ================= -->
+            <TabItem Header="Email &amp; Slack">
+                <ScrollViewer>
+                    <StackPanel>
+                        <CheckBox x:Name="OutlookBox" Content="Use desktop Outlook (work mailbox + calendar, no admin needed)" Margin="0,0,0,2"/>
+                        <TextBlock Style="{StaticResource Hint}" Text="Needs classic Outlook installed and signed in. The 'new Outlook' app can't be automated; use the IMAP account below or the browser instead."/>
+
+                        <TextBlock Style="{StaticResource H}" Text="IMAP / SMTP email account (optional)"/>
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="130"/>
+                                <ColumnDefinition Width="*"/>
+                            </Grid.ColumnDefinitions>
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/>
+                                <RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/>
+                            </Grid.RowDefinitions>
+                            <TextBlock Grid.Row="0" Text="Provider" VerticalAlignment="Center"/>
+                            <ComboBox Grid.Row="0" Grid.Column="1" x:Name="ProviderBox" Margin="0,3" SelectionChanged="Provider_Changed">
+                                <ComboBoxItem Content="Gmail"/>
+                                <ComboBoxItem Content="Outlook.com / Hotmail"/>
+                                <ComboBoxItem Content="Yahoo"/>
+                                <ComboBoxItem Content="Custom"/>
+                            </ComboBox>
+                            <TextBlock Grid.Row="1" Text="Email address" VerticalAlignment="Center"/>
+                            <TextBox Grid.Row="1" Grid.Column="1" x:Name="EmailBox" Margin="0,3"/>
+                            <TextBlock Grid.Row="2" Text="App password" VerticalAlignment="Center"/>
+                            <PasswordBox Grid.Row="2" Grid.Column="1" x:Name="EmailPasswordBox" Margin="0,3"/>
+                            <TextBlock Grid.Row="3" Text="IMAP host : port" VerticalAlignment="Center"/>
+                            <DockPanel Grid.Row="3" Grid.Column="1" Margin="0,3">
+                                <TextBox x:Name="ImapPortBox" DockPanel.Dock="Right" Width="70" Margin="6,0,0,0"/>
+                                <TextBox x:Name="ImapHostBox"/>
+                            </DockPanel>
+                            <TextBlock Grid.Row="4" Text="SMTP host : port" VerticalAlignment="Center"/>
+                            <DockPanel Grid.Row="4" Grid.Column="1" Margin="0,3">
+                                <TextBox x:Name="SmtpPortBox" DockPanel.Dock="Right" Width="70" Margin="6,0,0,0"/>
+                                <TextBox x:Name="SmtpHostBox"/>
+                            </DockPanel>
+                        </Grid>
+                        <TextBlock Style="{StaticResource Hint}" Text="Gmail: turn on 2-step verification, then create an app password at myaccount.google.com/apppasswords. Leave the password blank to keep the saved one. Add more accounts in config.json (EmailAccounts)."/>
+
+                        <TextBlock Style="{StaticResource H}" Text="Slack token"/>
+                        <PasswordBox x:Name="SlackBox"/>
+                        <TextBlock Style="{StaticResource Hint}" x:Name="SlackHint"
+                                   Text="Create an app at api.slack.com/apps, add User Token Scopes: channels:read, channels:history, groups:read, groups:history, im:read, im:history, im:write, mpim:history, chat:write, search:read, users:read, users:read.email. Install it to your workspace and paste the xoxp- User OAuth Token here. Leave blank to keep the saved token."/>
+                    </StackPanel>
+                </ScrollViewer>
+            </TabItem>
+
+            <!-- ================= Meetings ================= -->
+            <TabItem Header="Meetings">
+                <ScrollViewer>
+                    <StackPanel>
+                        <CheckBox x:Name="AutoJoinBox" Content="Auto-join Teams meetings from my Outlook calendar"/>
+                        <CheckBox x:Name="TakeNotesBox" Content="Take notes: record meeting audio, transcribe on this PC, write a summary + action items"/>
+                        <CheckBox x:Name="MuteBox" Content="Turn my mic and camera off before joining"/>
+                        <CheckBox x:Name="RecordMicBox" Content="Include my microphone in the recording (labels me vs. others)"/>
+
+                        <TextBlock Style="{StaticResource H}" Text="Join how many minutes early"/>
+                        <TextBox x:Name="LeadBox" Width="80" HorizontalAlignment="Left"/>
+
+                        <TextBlock Style="{StaticResource H}" Text="Only auto-join meetings whose subject contains (comma-separated, empty = all)"/>
+                        <TextBox x:Name="SubjectFilterBox"/>
+
+                        <TextBlock Style="{StaticResource H}" Text="Transcription quality (Whisper model, runs locally)"/>
+                        <ComboBox x:Name="WhisperBox" Width="260" HorizontalAlignment="Left">
+                            <ComboBoxItem Content="tiny"/>
+                            <ComboBoxItem Content="base"/>
+                            <ComboBoxItem Content="small"/>
+                            <ComboBoxItem Content="medium"/>
+                        </ComboBox>
+                        <TextBlock Style="{StaticResource Hint}" Text="base (~140 MB) is fast and decent. small (~460 MB) is noticeably better for accents and is still OK on most laptops. Downloads once."/>
+
+                        <TextBlock Style="{StaticResource H}" Text="After each meeting, also do this (optional)"/>
+                        <TextBox x:Name="AfterMeetingBox" AcceptsReturn="True" TextWrapping="Wrap" Height="54"/>
+                        <TextBlock Style="{StaticResource Hint}" Text="e.g. &quot;Email me the action items&quot; or &quot;Post the summary to #team-notes on Slack&quot;."/>
+
+                        <TextBlock Style="{StaticResource Hint}" Foreground="{StaticResource Gold}"
+                                   Text="Let people know you use an AI notetaker, and check your employer's policy on recording meetings."/>
+                        <Button Style="{StaticResource PillButton}" Background="#2E2840" Content="Open meeting notes folder" HorizontalAlignment="Left" Margin="0,6,0,0" Click="OpenNotes_Click"/>
+                    </StackPanel>
+                </ScrollViewer>
+            </TabItem>
+
+            <!-- ================= Watch & schedule ================= -->
+            <TabItem Header="Watch &amp; schedule">
+                <ScrollViewer>
+                    <StackPanel>
+                        <CheckBox x:Name="WatchBox" Content="Watch what I'm doing and suggest ways to help"/>
+                        <TextBlock Style="{StaticResource Hint}" Text="Tracks which app and window title you're using (never keystrokes) and, if enabled, a low-res screenshot. Every few minutes a cheap model looks for something Thokolosi could do for you. Suggestions pop up from the tray; click one to put it in the chat."/>
+                        <StackPanel Orientation="Horizontal">
+                            <TextBlock Text="Suggest at most every" VerticalAlignment="Center"/>
+                            <TextBox x:Name="WatchIntervalBox" Width="60" Margin="8,0"/>
+                            <TextBlock Text="minutes" VerticalAlignment="Center"/>
+                        </StackPanel>
+                        <CheckBox x:Name="WatchShotsBox" Content="Include a screenshot in each review"/>
+                        <TextBlock Style="{StaticResource H}" Text="Model for watching"/>
+                        <ComboBox x:Name="WatchModelBox" IsEditable="True" Width="260" HorizontalAlignment="Left">
+                            <ComboBoxItem Content="claude-haiku-5-5"/>
+                            <ComboBoxItem Content="claude-sonnet-5-5"/>
+                        </ComboBox>
+                        <TextBlock Style="{StaticResource H}" Text="Never look at (apps or window titles, one per line)"/>
+                        <TextBox x:Name="ExcludeBox" AcceptsReturn="True" Height="80" VerticalScrollBarVisibility="Auto"/>
+
+                        <TextBlock Style="{StaticResource H}" Text="Scheduled jobs (one per line:  time | days | name | instruction)"/>
+                        <TextBox x:Name="SchedulesBox" AcceptsReturn="True" TextWrapping="NoWrap" Height="120" HorizontalScrollBarVisibility="Auto"
+                                 VerticalScrollBarVisibility="Auto" FontFamily="Cascadia Mono, Consolas" FontSize="12"/>
+                        <TextBlock Style="{StaticResource Hint}" Text="Days: daily, weekdays, weekends, or Mon,Wed,Fri. Start a line with # to pause it. Example:&#10;07:30 | weekdays | Morning brief | Summarise my unread Outlook email, Slack mentions and today's meetings&#10;17:00 | Fri | Weekly git report | List what I committed this week across my code folders"/>
+                    </StackPanel>
+                </ScrollViewer>
+            </TabItem>
+
+            <!-- ================= Voice ================= -->
+            <TabItem Header="Voice">
+                <ScrollViewer>
+                    <StackPanel>
+                        <TextBlock Style="{StaticResource Hint}" Margin="0,0,0,6"
+                                   Text="Talk to Thokolosi with the mic button in the chat, a keyboard shortcut from any app, or a wake phrase. Speech is transcribed on this PC with Whisper; replies are read by a Windows voice. Nothing audio-related goes to the cloud."/>
+
+                        <TextBlock Style="{StaticResource H}" Text="Push-to-talk shortcut (works in any app)"/>
+                        <TextBox x:Name="HotkeyBox" Width="220" HorizontalAlignment="Left"/>
+                        <TextBlock Style="{StaticResource Hint}" Text="e.g. Ctrl+Alt+Space, Ctrl+Shift+T, Win+F9. Press once, talk, and it stops when you stop talking (or press again). Leave blank for none."/>
+
+                        <CheckBox x:Name="WakeBox" Content="Listen for a wake phrase"/>
+                        <DockPanel Margin="20,2,0,0">
+                            <TextBlock Text="Phrase" VerticalAlignment="Center" Margin="0,0,8,0"/>
+                            <TextBox x:Name="WakePhraseBox" Width="220" HorizontalAlignment="Left"/>
+                        </DockPanel>
+                        <TextBlock Style="{StaticResource Hint}" Margin="20,3,0,6" Text="Say &quot;Hey Thokolosi&quot; and wait for the chime, or say it all at once: &quot;Hey Thokolosi, what's on my calendar today?&quot;. Short bursts of speech are checked on this PC with Whisper; nothing is kept unless the name is heard. Uses some CPU while people are talking nearby; paused while Thokolosi speaks or takes meeting notes."/>
+
+                        <TextBlock Style="{StaticResource H}" Text="Read replies aloud"/>
+                        <ComboBox x:Name="SpeakBox" Width="320" HorizontalAlignment="Left">
+                            <ComboBoxItem Content="Only when I talk to it" Tag="voice"/>
+                            <ComboBoxItem Content="Always" Tag="always"/>
+                            <ComboBoxItem Content="Never" Tag="never"/>
+                        </ComboBox>
+                        <CheckBox x:Name="ConversationBox" Content="Voice chat: after answering, listen for my follow-up (say nothing to end)"/>
+
+                        <TextBlock Style="{StaticResource H}" Text="Voice and speed"/>
+                        <StackPanel Orientation="Horizontal">
+                            <ComboBox x:Name="VoiceBox" Width="280"/>
+                            <Slider x:Name="RateSlider" Minimum="-5" Maximum="5" Width="160" Margin="12,0,8,0" VerticalAlignment="Center"
+                                    IsSnapToTickEnabled="True" TickFrequency="1"/>
+                            <Button Style="{StaticResource PillButton}" Background="#2E2840" Content="Test" Click="TestVoice_Click"/>
+                        </StackPanel>
+                        <TextBlock Style="{StaticResource Hint}" Text="More voices: Windows Settings > Time &amp; language > Speech > Add voices."/>
+
+                        <TextBlock Style="{StaticResource H}" Text="Language I speak"/>
+                        <ComboBox x:Name="LanguageBox" Width="320" HorizontalAlignment="Left">
+                            <ComboBoxItem Content="English" Tag="en"/>
+                            <ComboBoxItem Content="Afrikaans" Tag="af"/>
+                            <ComboBoxItem Content="isiZulu" Tag="zu"/>
+                            <ComboBoxItem Content="isiXhosa" Tag="xh"/>
+                            <ComboBoxItem Content="Sesotho" Tag="st"/>
+                            <ComboBoxItem Content="Detect automatically" Tag="auto"/>
+                        </ComboBox>
+                        <TextBlock Style="{StaticResource Hint}" Text="Whisper is strongest in English and Afrikaans; African languages work but with more mistakes (a bigger model helps)."/>
+
+                        <TextBlock Style="{StaticResource H}" Text="Speech recognition model"/>
+                        <ComboBox x:Name="VoiceModelBox" Width="320" HorizontalAlignment="Left">
+                            <ComboBoxItem Content="tiny - fastest" Tag="tiny"/>
+                            <ComboBoxItem Content="base - good balance" Tag="base"/>
+                            <ComboBoxItem Content="small - most accurate, slower" Tag="small"/>
+                        </ComboBox>
+
+                        <TextBlock Style="{StaticResource H}" Text="Mic sensitivity"/>
+                        <StackPanel Orientation="Horizontal">
+                            <TextBlock Text="Sensitive" Foreground="{StaticResource Muted}" VerticalAlignment="Center"/>
+                            <Slider x:Name="ThresholdSlider" Minimum="0.004" Maximum="0.06" Width="240" Margin="8,0" VerticalAlignment="Center"/>
+                            <TextBlock Text="Noisy room" Foreground="{StaticResource Muted}" VerticalAlignment="Center"/>
+                        </StackPanel>
+                        <TextBlock Style="{StaticResource Hint}" Text="If it cuts you off, move left. If it never stops listening, move right."/>
+                    </StackPanel>
+                </ScrollViewer>
+            </TabItem>
+
+            <!-- ================= Phone ================= -->
+            <TabItem Header="Phone">
+                <ScrollViewer>
+                    <StackPanel>
+                        <CheckBox x:Name="PhoneBox" Content="Link with the Thokolosi iPhone app"/>
+                        <TextBlock Style="{StaticResource Hint}" Text="Chat with this PC from your phone, answer approvals there, and get notifications. Uses your own Firebase project (free tier). Values come from Firebase console &gt; Project settings."/>
+                        <Grid>
+                            <Grid.ColumnDefinitions><ColumnDefinition Width="150"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
+                            <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
+                            <TextBlock Text="Web API key" VerticalAlignment="Center"/>
+                            <TextBox Grid.Column="1" x:Name="FbApiKeyBox" Margin="0,3"/>
+                            <TextBlock Grid.Row="1" Text="Realtime DB URL" VerticalAlignment="Center"/>
+                            <TextBox Grid.Row="1" Grid.Column="1" x:Name="FbDbUrlBox" Margin="0,3"/>
+                            <TextBlock Grid.Row="2" Text="Project ID" VerticalAlignment="Center"/>
+                            <TextBox Grid.Row="2" Grid.Column="1" x:Name="FbProjectBox" Margin="0,3"/>
+                        </Grid>
+                        <TextBlock Style="{StaticResource H}" Text="Status"/>
+                        <TextBlock x:Name="PhoneStatusText" Style="{StaticResource Hint}"/>
+                        <ListBox x:Name="PhonesList" Height="90" Background="#241F33" Foreground="{StaticResource Text}" BorderBrush="#3A3350"/>
+                        <StackPanel Orientation="Horizontal" Margin="0,8,0,0">
+                            <Button Style="{StaticResource PillButton}" Content="Pair a phone (QR code)" Click="Pair_Click" Margin="0,0,8,0"/>
+                            <Button Style="{StaticResource PillButton}" Background="#2E2840" Content="Unpair selected" Click="Unpair_Click"/>
+                        </StackPanel>
+                        <TextBlock Style="{StaticResource H}" Text="Phone approvals time out after (minutes)"/>
+                        <TextBox x:Name="ApprovalTimeoutBox" Width="80" HorizontalAlignment="Left"/>
+                    </StackPanel>
+                </ScrollViewer>
+            </TabItem>
+
+            <!-- ================= Spending & offline ================= -->
+            <TabItem Header="Spending">
+                <ScrollViewer>
+                    <StackPanel>
+                        <TextBlock x:Name="SpendText" FontSize="15" FontWeight="SemiBold"/>
+                        <TextBlock Style="{StaticResource Hint}" Text="Estimated from token usage and the price table in config.json (Budget &gt; Prices). Check console.anthropic.com for exact billing."/>
+                        <TextBlock Style="{StaticResource H}" Text="Monthly budget (USD, 0 = no limit)"/>
+                        <TextBox x:Name="BudgetBox" Width="100" HorizontalAlignment="Left"/>
+                        <TextBlock Style="{StaticResource H}" Text="When the budget is reached"/>
+                        <ComboBox x:Name="AtCapBox" Width="360" HorizontalAlignment="Left">
+                            <ComboBoxItem Content="Switch to the cheaper model" Tag="cheaper"/>
+                            <ComboBoxItem Content="Use the offline model" Tag="local"/>
+                            <ComboBoxItem Content="Pause until next month" Tag="pause"/>
+                            <ComboBoxItem Content="Just warn me" Tag="warn"/>
+                        </ComboBox>
+                        <TextBlock Style="{StaticResource H}" Text="Cheaper model"/>
+                        <ComboBox x:Name="CheapModelBox" IsEditable="True" Width="260" HorizontalAlignment="Left">
+                            <ComboBoxItem Content="claude-haiku-5-5"/>
+                            <ComboBoxItem Content="claude-sonnet-5-5"/>
+                        </ComboBox>
+                        <Button Style="{StaticResource PillButton}" Background="#2E2840" Content="Open usage log" HorizontalAlignment="Left" Margin="0,8,0,0" Click="OpenUsage_Click"/>
+
+                        <TextBlock Style="{StaticResource H}" Text="Offline fallback" Margin="0,18,0,4"/>
+                        <CheckBox x:Name="LocalBox" Content="Use a local model when Claude can't be reached (no internet / outage)"/>
+                        <TextBlock Style="{StaticResource Hint}" Text="Install Ollama (winget install Ollama.Ollama), then run: ollama pull llama3.2. The offline model can chat but can't use tools."/>
+                        <Grid>
+                            <Grid.ColumnDefinitions><ColumnDefinition Width="150"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
+                            <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
+                            <TextBlock Text="Ollama URL" VerticalAlignment="Center"/>
+                            <TextBox Grid.Column="1" x:Name="LocalUrlBox" Margin="0,3"/>
+                            <TextBlock Grid.Row="1" Text="Model" VerticalAlignment="Center"/>
+                            <TextBox Grid.Row="1" Grid.Column="1" x:Name="LocalModelBox" Margin="0,3"/>
+                        </Grid>
+                        <StackPanel Orientation="Horizontal" Margin="0,6,0,0">
+                            <Button Style="{StaticResource PillButton}" Background="#2E2840" Content="Test offline model" Click="TestLocal_Click"/>
+                            <TextBlock x:Name="LocalTestText" Style="{StaticResource Hint}" Margin="10,0,0,0" VerticalAlignment="Center"/>
+                        </StackPanel>
+                    </StackPanel>
+                </ScrollViewer>
+            </TabItem>
+
+            <!-- ================= Business & updates ================= -->
+            <TabItem Header="Business">
+                <ScrollViewer>
+                    <StackPanel>
+                        <TextBlock Style="{StaticResource H}" Text="Memory &amp; playbooks" Margin="0,0,0,4"/>
+                        <TextBlock Style="{StaticResource Hint}" Text="Thokolosi remembers facts between chats and keeps saved routines (playbooks) you can run with /name. Starter playbooks for Stroke 5 News, consulting and the farm are included."/>
+                        <StackPanel Orientation="Horizontal">
+                            <Button Style="{StaticResource PillButton}" Background="#2E2840" Content="View memory" Click="OpenMemory_Click" Margin="0,0,8,0"/>
+                            <Button Style="{StaticResource PillButton}" Background="#2E2840" Content="Open playbooks folder" Click="OpenPlaybooks_Click"/>
+                        </StackPanel>
+
+                        <TextBlock Style="{StaticResource H}" Text="Facebook Page (Stroke 5 News)" Margin="0,16,0,4"/>
+                        <Grid>
+                            <Grid.ColumnDefinitions><ColumnDefinition Width="150"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
+                            <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
+                            <TextBlock Text="Page ID" VerticalAlignment="Center"/>
+                            <TextBox Grid.Column="1" x:Name="FbPageIdBox" Margin="0,3"/>
+                            <TextBlock Grid.Row="1" Text="Page access token" VerticalAlignment="Center"/>
+                            <PasswordBox Grid.Row="1" Grid.Column="1" x:Name="FbTokenBox" Margin="0,3"/>
+                        </Grid>
+                        <TextBlock Style="{StaticResource Hint}" x:Name="FbHint" Text="A long-lived Page token with pages_manage_posts, pages_read_engagement and pages_manage_engagement (from developers.facebook.com Graph API Explorer). Leave blank to keep the saved token."/>
+
+                        <TextBlock Style="{StaticResource H}" Text="WhatsApp / Telegram control (via Hermes)" Margin="0,16,0,4"/>
+                        <CheckBox x:Name="MsgBox" Content="Act on messages I send through my Hermes bridge"/>
+                        <DockPanel Margin="0,4,0,0">
+                            <TextBlock Text="Hermes MCP server name" Width="150" VerticalAlignment="Center"/>
+                            <TextBox x:Name="MsgServerBox"/>
+                        </DockPanel>
+                        <TextBlock Text="Only obey these senders (phone numbers / usernames / chat ids, one per line)" Margin="0,8,0,4"/>
+                        <TextBox x:Name="MsgAllowBox" AcceptsReturn="True" Height="54" VerticalScrollBarVisibility="Auto"/>
+                        <TextBlock Style="{StaticResource Hint}" Text="For safety nothing happens until at least one sender is listed. Replies start with the robot emoji so Thokolosi never answers itself."/>
+
+                        <TextBlock Style="{StaticResource H}" Text="Monitors (solar, incubator...)" Margin="0,16,0,4"/>
+                        <TextBox x:Name="MonitorsStatusBox" IsReadOnly="True" Height="70" TextWrapping="Wrap" VerticalScrollBarVisibility="Auto"/>
+                        <DockPanel Margin="0,6,0,0">
+                            <Button DockPanel.Dock="Right" Style="{StaticResource PillButton}" Content="Add SolarAssistant" Click="AddSolar_Click" Margin="8,0,0,0"/>
+                            <TextBlock Text="SolarAssistant host/IP" VerticalAlignment="Center" Width="150"/>
+                            <TextBox x:Name="SolarHostBox"/>
+                        </DockPanel>
+                        <TextBlock Style="{StaticResource Hint}" Text="Turn on MQTT in SolarAssistant (Configuration &gt; MQTT). For the incubator or other sensors, add monitors in config.json (Monitors) or ask Thokolosi to set one up."/>
+                        <Button Style="{StaticResource PillButton}" Background="#2E2840" Content="Edit monitors (config.json)" HorizontalAlignment="Left" Click="EditConfig_Click"/>
+
+                        <TextBlock Style="{StaticResource H}" Text="Updates" Margin="0,16,0,4"/>
+                        <CheckBox x:Name="UpdateBox" Content="Check for updates automatically"/>
+                        <CheckBox x:Name="AutoUpdateBox" Content="Install updates without asking (when idle)"/>
+                        <DockPanel Margin="0,4,0,0">
+                            <TextBlock Text="GitHub repo" Width="150" VerticalAlignment="Center"/>
+                            <TextBox x:Name="UpdateRepoBox"/>
+                        </DockPanel>
+                        <DockPanel Margin="0,4,0,0">
+                            <TextBlock Text="GitHub token (read-only)" Width="150" VerticalAlignment="Center"/>
+                            <PasswordBox x:Name="UpdateTokenBox"/>
+                        </DockPanel>
+                        <TextBlock Style="{StaticResource Hint}" x:Name="UpdateHint" Text="Needed while the repo is private: a fine-grained token with Contents: read-only on that repo. Leave blank to keep the saved one."/>
+                        <StackPanel Orientation="Horizontal">
+                            <Button Style="{StaticResource PillButton}" Background="#2E2840" Content="Check now" Click="CheckUpdates_Click"/>
+                            <TextBlock x:Name="VersionText" Style="{StaticResource Hint}" Margin="10,0,0,0" VerticalAlignment="Center"/>
+                        </StackPanel>
+
+                        <TextBlock Style="{StaticResource H}" Text="Shortcuts" Margin="0,16,0,4"/>
+                        <DockPanel Margin="0,2">
+                            <TextBlock Text="Snip the screen" Width="150" VerticalAlignment="Center"/>
+                            <TextBox x:Name="SnipKeyBox" Width="200" HorizontalAlignment="Left"/>
+                        </DockPanel>
+                        <DockPanel Margin="0,2">
+                            <TextBlock Text="Clipboard actions" Width="150" VerticalAlignment="Center"/>
+                            <TextBox x:Name="ClipKeyBox" Width="200" HorizontalAlignment="Left"/>
+                        </DockPanel>
+                    </StackPanel>
+                </ScrollViewer>
+            </TabItem>
+
+            <!-- ================= Plug-ins (MCP) ================= -->
+            <TabItem Header="Plug-ins">
+                <StackPanel>
+                    <CheckBox x:Name="McpBox" Content="Connect to my MCP servers"/>
+                    <TextBlock Style="{StaticResource Hint}" Text="MCP servers add tools (email, Slack, databases, Jira...). On first run Thokolosi copies the servers from Claude Desktop's config, so your existing ones work here too. Changes apply after restarting Thokolosi."/>
+                    <TextBlock Style="{StaticResource H}" Text="Status"/>
+                    <TextBox x:Name="McpStatusBox" IsReadOnly="True" Height="160" TextWrapping="Wrap" VerticalScrollBarVisibility="Auto"/>
+                    <StackPanel Orientation="Horizontal" Margin="0,8,0,0">
+                        <Button Style="{StaticResource PillButton}" Background="#2E2840" Content="Edit mcp.json" Click="EditMcp_Click" Margin="0,0,8,0"/>
+                        <Button Style="{StaticResource PillButton}" Background="#2E2840" Content="Re-import from Claude Desktop" Click="ReimportMcp_Click"/>
+                    </StackPanel>
+                </StackPanel>
+            </TabItem>
+        </TabControl>
+
+        <StackPanel Grid.Row="1" Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,12,0,0">
+            <Button Style="{StaticResource PillButton}" Background="#2E2840" Content="Cancel" Margin="0,0,8,0" Click="Cancel_Click"/>
+            <Button Style="{StaticResource PillButton}" Content="Save" Click="Save_Click"/>
+        </StackPanel>
+    </Grid>
+</Window>
