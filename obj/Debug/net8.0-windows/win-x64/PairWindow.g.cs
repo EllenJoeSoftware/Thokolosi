@@ -84,7 +84,7 @@ namespace Thokolosi {
                 return;
             }
             _contentLoaded = true;
-            System.Uri resourceLocater = new System.Uri("/Thokolosi;V0.4.0.0;component/pairwindow.xaml", System.UriKind.Relative);
+            System.Uri resourceLocater = new System.Uri("/Thokolosi;V0.6.0.0;component/pairwindow.xaml", System.UriKind.Relative);
             
             #line 1 "..\..\..\..\PairWindow.xaml"
             System.Windows.Application.LoadComponent(this, resourceLocater);

@@ -28,7 +28,7 @@ public static class ClipboardActions
         var system = "You transform text the user copied. Output ONLY the resulting text - no preamble, no quotes, no explanations - " +
                      "so it can be pasted directly. Preserve formatting style (plain text stays plain).";
         var content = new JsonArray { new JsonObject { ["type"] = "text", ["text"] = $"{action.Instruction}\n\n---\n{text}" } };
-        var result = await client.CompleteAsync(cfg.ApiKey ?? throw new InvalidOperationException("No API key"),
+        var result = await client.CompleteAsync(cfg.KeyFor(cfg.Model),
             cfg.Model, system, content, 4000, ct, "clipboard");
         return result.Trim();
     }

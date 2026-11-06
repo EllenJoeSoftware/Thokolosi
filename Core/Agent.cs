@@ -51,13 +51,12 @@ public class Agent
     public void NewConversation()
     {
         _messages = new JsonArray();
+        _client.SessionId = ClaudeClient.NewSessionId();
         SaveHistory();
     }
 
     public async Task RunAsync(string userText, CancellationToken ct, IReadOnlyList<Attachment>? attachments = null)
     {
-        var apiKey = _cfg.ApiKey ?? throw new InvalidOperationException("No Claude API key set. Open Settings from the tray icon and paste your key.");
-
         // Budget cap
         var model = _cfg.Model;
         bool forceLocal = false;
@@ -72,6 +71,7 @@ public class Agent
                 case "cheaper": model = _cfg.CheapModel; break;
             }
         }
+        var apiKey = _cfg.KeyFor(model);
 
         // "/playbook-name extra words" runs a saved playbook
         var m = Regex.Match(userText.Trim(), @"^/([\w-]+)\s*(.*)$", RegexOptions.Singleline);
@@ -300,15 +300,26 @@ public class Agent
     {
         var tools = new JsonArray();
         foreach (var t in _tools.Snapshot()) tools.Add(t.Definition.DeepClone());
-        tools.Add(new JsonObject { ["type"] = "web_search_20250305", ["name"] = "web_search", ["max_uses"] = 5 });
+        // Claude's server-side web search; other providers look things up with the browser tool instead.
+        var openCode = OpenCodeGo.Handles(model);
+        if (!openCode) tools.Add(new JsonObject { ["type"] = "web_search_20250305", ["name"] = "web_search", ["max_uses"] = 5 });
         // Cache the tool list + stable system prompt between calls (cheaper and faster).
         tools[^1]!["cache_control"] = new JsonObject { ["type"] = "ephemeral" };
 
+        // The user model changes only every so often, so it lives in the cached block; only the clock and live screen info change per call.
         var system = new JsonArray
         {
-            new JsonObject { ["type"] = "text", ["text"] = StableSystemPrompt(), ["cache_control"] = new JsonObject { ["type"] = "ephemeral" } },
-            new JsonObject { ["type"] = "text", ["text"] = $"Current local time: {DateTime.Now:dddd yyyy-MM-dd HH:mm} ({TimeZoneInfo.Local.DisplayName})." + (RunContext != null ? "\n" + RunContext : "") }
+            new JsonObject { ["type"] = "text", ["text"] = StableSystemPrompt() + UserModelText(), ["cache_control"] = new JsonObject { ["type"] = "ephemeral" } },
+            new JsonObject { ["type"] = "text", ["text"] = $"Current local time: {DateTime.Now:dddd yyyy-MM-dd HH:mm} ({TimeZoneInfo.Local.DisplayName})." +
+                LiveActivityText() + (RunContext != null ? "\n" + RunContext : "") +
+                (openCode ? "\nThe web_search tool is not available with this model: for current information, use the browser tool (search a site such as duckduckgo.com) instead." : "") }
         };
+
+        // Rolling cache point on the conversation: everything up to the latest message is read from cache on the next turn
+        // instead of being re-billed at full price. (Breakpoints: tools, system, conversation = 3 of the 4 allowed.)
+        var messages = _messages.DeepClone() as JsonArray ?? new JsonArray();
+        if (messages.Count > 0 && messages[^1]?["content"] is JsonArray last && last.Count > 0 && last[^1] is JsonObject lastBlock)
+            lastBlock["cache_control"] = new JsonObject { ["type"] = "ephemeral" };
 
         return new JsonObject
         {
@@ -316,9 +327,29 @@ public class Agent
             ["max_tokens"] = _cfg.MaxTokens,
             ["system"] = system,
             ["tools"] = tools,
-            ["messages"] = _messages.DeepClone()
+            ["messages"] = messages
         };
     }
+
+    /// <summary>Set by the app: returns what the user is doing right now (from the activity watcher), or null when watching is off.</summary>
+    public static Func<string?>? LiveContext { get; set; }
+
+    static string LiveActivityText()
+    {
+        string? live = null;
+        try { live = LiveContext?.Invoke(); } catch { }
+        return string.IsNullOrWhiteSpace(live) ? "" :
+            "\nLive activity on the user's PC (from the window watcher: app and window titles only, no content; refreshed on every message). " +
+            "If the user asks what they are busy with or working on right now, answer immediately from this without calling any tool, " +
+            "say it is based on window titles, and say so if they are away. It also lists every open window. " +
+            "When the user wants to know what is INSIDE a window (what they are reading or watching, a chat, a document, a page), use the see_window tool " +
+            "(text and/or a picture of that window) instead of guessing from the title. Do not mention this block otherwise.\n" + live;
+    }
+
+    /// <summary>The growing model of the user (kept out of the cached system prompt so it can change freely).</summary>
+    static string UserModelText() =>
+        "\n\n## What you have learned about the user (his model, built over time; use it to tailor help and suggest better ways; " +
+        "the user_model tool has the full version)\n" + Profile.UserModel.ForPrompt();
 
     string StableSystemPrompt()
     {

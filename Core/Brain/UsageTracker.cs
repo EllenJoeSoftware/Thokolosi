@@ -62,6 +62,7 @@ public static class UsageTracker
         var b = Config.Budget;
         var price = b.Prices.Where(kv => model.StartsWith(kv.Key, StringComparison.OrdinalIgnoreCase)).Select(kv => kv.Value).FirstOrDefault()
                     ?? b.Prices.Values.FirstOrDefault() ?? new ModelPrice();
+        if (OpenCodeGo.Handles(model)) price = new ModelPrice(); // flat OpenCode Go subscription: no per-token cost
         double usd = (input * price.Input + output * price.Output + cacheWrite * price.CacheWrite + cacheRead * price.CacheRead) / 1_000_000
                      + searches * b.WebSearchUsd;
 

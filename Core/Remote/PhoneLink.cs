@@ -39,6 +39,7 @@ public sealed class PhoneLink : IAsyncDisposable
     public event Action? PhonesChanged;
     public event Action<string>? JobChangedRemotely;
     public event Action<JsonObject>? PlaybooksChangedRemotely;
+    public event Action<string, string, string>? FileReceived;    // saved path, caption, phone name
 
     public PhoneLink(AppConfig cfg)
     {
@@ -82,6 +83,7 @@ public sealed class PhoneLink : IAsyncDisposable
         await UpdateInfoAsync(new JsonObject { ["online"] = true });
         _heartbeat = new System.Threading.Timer(_ => _ = UpdateInfoAsync(new JsonObject()), null, 60_000, 60_000);
         _ = Task.Run(() => PruneOutboxAsync(ct));
+        _ = Task.Run(() => PruneFilesAsync(ct));
         _ = Task.Run(() => _fb.ListenAsync($"{Pc}/phones", OnPhones, ct));
         _ = Task.Run(() => _fb.ListenAsync($"{Pc}/inbox", OnInbox, ct));
         _ = Task.Run(() => _fb.ListenAsync($"{Pc}/config", OnConfig, ct));
@@ -215,8 +217,169 @@ public sealed class PhoneLink : IAsyncDisposable
             case "new_chat": NewChatRequested?.Invoke(); break;
             case "run_playbook": PlaybookRequested?.Invoke(item["name"]?.GetValue<string>() ?? ""); break;
             case "undo": UndoRequested?.Invoke(item["snapshotId"]?.GetValue<string>()); break;
+            case "file": _ = Task.Run(() => ReceiveFileAsync(item, from, name)); break;
+            case "file_received": _ = Task.Run(() => ForgetFileAsync(item["fileId"]?.GetValue<string>(), onlyFromPc: true)); break;
         }
     }
+
+    // ---------- files (both directions, see docs/PROTOCOL.md "Files") ----------
+
+    public const long MaxFileBytes = 25L * 1024 * 1024;
+    const int ChunkBytes = 256 * 1024;
+
+    /// <summary>Where files sent from a phone are saved.</summary>
+    public static string ReceivedDir => System.IO.Path.Combine(
+        Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), "Downloads", "Thokolosi");
+
+    static string NewFileId() =>
+        $"{DateTimeOffset.UtcNow.ToUnixTimeMilliseconds()}_{Convert.ToHexString(RandomNumberGenerator.GetBytes(6)).ToLowerInvariant()}";
+
+    /// <summary>Upload a file for every paired phone and announce it in the outbox. Returns the file id.</summary>
+    public async Task<string> SendFileAsync(string path, string? caption, Action<double>? progress, CancellationToken ct)
+    {
+        if (!Connected) throw new InvalidOperationException(LastError ?? "The phone link isn't connected.");
+        lock (_gate) if (_phones.Count == 0) throw new InvalidOperationException("No phone is paired with this PC yet.");
+        var info = new System.IO.FileInfo(path);
+        if (!info.Exists) throw new System.IO.FileNotFoundException("File not found: " + path);
+        if (info.Length > MaxFileBytes) throw new InvalidOperationException($"{info.Name} is {info.Length / 1048576.0:0.#} MB; the limit is {MaxFileBytes / 1048576} MB.");
+
+        var bytes = await System.IO.File.ReadAllBytesAsync(path, ct);
+        var id = NewFileId();
+        int chunks = Math.Max(1, (bytes.Length + ChunkBytes - 1) / ChunkBytes);
+        using var linked = CancellationTokenSource.CreateLinkedTokenSource(ct, _cts.Token);
+        try
+        {
+            for (int i = 0; i < chunks; i++)
+            {
+                int off = i * ChunkBytes, len = Math.Min(ChunkBytes, bytes.Length - off);
+                await _fb.PutAsync($"{Pc}/filedata/{id}/c{i}", JsonValue.Create(Convert.ToBase64String(bytes, off, len))!, linked.Token);
+                progress?.Invoke((i + 1) / (double)chunks);
+            }
+            await _fb.PutAsync($"{Pc}/files/{id}", new JsonObject
+            {
+                ["name"] = info.Name, ["size"] = bytes.Length, ["mime"] = MimeOf(info.Name), ["chunks"] = chunks,
+                ["from"] = "pc", ["ts"] = FirebaseClient.ServerTimestamp
+            }, linked.Token);
+        }
+        catch
+        {
+            await ForgetFileAsync(id, onlyFromPc: false);
+            throw;
+        }
+        Post("file", new JsonObject
+        {
+            ["fileId"] = id, ["name"] = info.Name, ["size"] = bytes.Length, ["mime"] = MimeOf(info.Name), ["text"] = caption ?? ""
+        });
+        ActivityLog.Write("PHONE", $"Sent {info.Name} ({bytes.Length / 1024} KB) to the phone");
+        return id;
+    }
+
+    async Task ReceiveFileAsync(JsonObject item, string? fromUid, string phoneName)
+    {
+        var id = item["fileId"]?.GetValue<string>() ?? "";
+        var caption = item["text"]?.GetValue<string>() ?? "";
+        try
+        {
+            if (id.Length == 0 || id.IndexOfAny(new[] { '/', '.', '#', '$', '[', ']' }) >= 0) throw new InvalidOperationException("bad file id");
+            var meta = await _fb.GetAsync($"{Pc}/files/{id}", _cts.Token) as JsonObject
+                       ?? throw new InvalidOperationException("the file is no longer on the server");
+            if (meta["from"]?.GetValue<string>() != fromUid) throw new InvalidOperationException("file owner mismatch");
+            var size = meta["size"]?.GetValue<long>() ?? 0;
+            var chunks = meta["chunks"]?.GetValue<int>() ?? 0;
+            if (size > MaxFileBytes || chunks <= 0 || chunks > MaxFileBytes / ChunkBytes + 1) throw new InvalidOperationException("file too large");
+
+            using var ms = new System.IO.MemoryStream((int)size);
+            for (int i = 0; i < chunks; i++)
+            {
+                var part = (await _fb.GetAsync($"{Pc}/filedata/{id}/c{i}", _cts.Token))?.GetValue<string>()
+                           ?? throw new InvalidOperationException($"part {i + 1} of {chunks} is missing");
+                var b = Convert.FromBase64String(part);
+                ms.Write(b, 0, b.Length);
+                if (ms.Length > MaxFileBytes) throw new InvalidOperationException("file too large");
+            }
+            if (ms.Length != size) throw new InvalidOperationException($"got {ms.Length} of {size} bytes");
+
+            System.IO.Directory.CreateDirectory(ReceivedDir);
+            var path = UniquePath(ReceivedDir, SafeFileName(meta["name"]?.GetValue<string>() ?? item["name"]?.GetValue<string>() ?? "file"));
+            await System.IO.File.WriteAllBytesAsync(path, ms.ToArray(), _cts.Token);
+            await ForgetFileAsync(id, onlyFromPc: false);
+            ActivityLog.Write("PHONE", $"Received {System.IO.Path.GetFileName(path)} ({ms.Length / 1024} KB) from {phoneName}");
+            Post("status", new JsonObject { ["text"] = $"Saved {System.IO.Path.GetFileName(path)} on the PC in Downloads\\Thokolosi" });
+            FileReceived?.Invoke(path, caption, phoneName);
+        }
+        catch (OperationCanceledException) { }
+        catch (Exception ex)
+        {
+            ActivityLog.Write("PHONE", $"Receiving a file from {phoneName} failed: {ex.Message}");
+            Post("error", new JsonObject { ["text"] = $"The PC couldn't receive {item["name"]?.GetValue<string>() ?? "the file"}: {ex.Message}" });
+            await ForgetFileAsync(id, onlyFromPc: false);
+        }
+    }
+
+    /// <summary>Delete a file's metadata and data from the server.</summary>
+    async Task ForgetFileAsync(string? id, bool onlyFromPc)
+    {
+        if (string.IsNullOrEmpty(id) || id.IndexOfAny(new[] { '/', '.', '#', '$', '[', ']' }) >= 0) return;
+        try
+        {
+            if (onlyFromPc)
+            {
+                var from = (await _fb.GetAsync($"{Pc}/files/{id}/from", _cts.Token))?.GetValue<string>();
+                if (from != "pc") return;
+            }
+            await _fb.PatchAsync(Pc, new JsonObject { [$"files/{id}"] = null, [$"filedata/{id}"] = null }, _cts.Token);
+        }
+        catch (Exception ex) { ActivityLog.Write("PHONE", "File cleanup skipped: " + ex.Message); }
+    }
+
+    /// <summary>Files are only parked on the server; anything older than 3 days (or abandoned mid-upload) is removed.</summary>
+    async Task PruneFilesAsync(CancellationToken ct)
+    {
+        try
+        {
+            var cutoff = DateTimeOffset.UtcNow.AddDays(-3).ToUnixTimeMilliseconds();
+            var ids = new HashSet<string>();
+            if (await _fb.GetAsync($"{Pc}/files", ct, "&shallow=true") is JsonObject f) foreach (var (k, _) in f) ids.Add(k);
+            if (await _fb.GetAsync($"{Pc}/filedata", ct, "&shallow=true") is JsonObject d) foreach (var (k, _) in d) ids.Add(k);
+            var patch = new JsonObject();
+            foreach (var id in ids)
+            {
+                var stamp = id.Split('_')[0];
+                if (long.TryParse(stamp, out var ms) && ms < cutoff) { patch[$"files/{id}"] = null; patch[$"filedata/{id}"] = null; }
+            }
+            if (patch.Count > 0) await _fb.PatchAsync(Pc, patch, ct);
+        }
+        catch (Exception ex) { ActivityLog.Write("PHONE", "File prune skipped: " + ex.Message); }
+    }
+
+    static string SafeFileName(string name)
+    {
+        name = System.IO.Path.GetFileName(name.Replace('\\', '/'));
+        foreach (var c in System.IO.Path.GetInvalidFileNameChars()) name = name.Replace(c, '_');
+        name = name.Trim().TrimStart('.');
+        return name.Length == 0 ? "file" : name.Length > 120 ? name[..120] : name;
+    }
+
+    static string UniquePath(string dir, string name)
+    {
+        var path = System.IO.Path.Combine(dir, name);
+        var stem = System.IO.Path.GetFileNameWithoutExtension(name);
+        var ext = System.IO.Path.GetExtension(name);
+        for (int n = 2; System.IO.File.Exists(path); n++) path = System.IO.Path.Combine(dir, $"{stem} ({n}){ext}");
+        return path;
+    }
+
+    public static string MimeOf(string name) => System.IO.Path.GetExtension(name).ToLowerInvariant() switch
+    {
+        ".jpg" or ".jpeg" => "image/jpeg", ".png" => "image/png", ".gif" => "image/gif", ".webp" => "image/webp", ".heic" => "image/heic",
+        ".pdf" => "application/pdf", ".txt" or ".log" or ".md" => "text/plain", ".csv" => "text/csv", ".json" => "application/json",
+        ".html" or ".htm" => "text/html", ".zip" => "application/zip",
+        ".doc" => "application/msword", ".docx" => "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+        ".xls" => "application/vnd.ms-excel", ".xlsx" => "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        ".ppt" => "application/vnd.ms-powerpoint", ".pptx" => "application/vnd.openxmlformats-officedocument.presentationml.presentation",
+        ".mp3" => "audio/mpeg", ".m4a" => "audio/mp4", ".wav" => "audio/wav", ".mp4" => "video/mp4", ".mov" => "video/quicktime",
+        _ => "application/octet-stream"
+    };
 
     // ---------- config (central management) ----------
 

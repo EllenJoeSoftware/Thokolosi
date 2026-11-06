@@ -81,13 +81,26 @@
                         <PasswordBox x:Name="ApiKeyBox"/>
                         <TextBlock Style="{StaticResource Hint}" x:Name="KeyHint"/>
 
+                        <TextBlock Style="{StaticResource H}" Text="OpenCode Go API key (optional)"/>
+                        <PasswordBox x:Name="OpenCodeKeyBox"/>
+                        <TextBlock Style="{StaticResource Hint}" x:Name="OpenCodeHint"/>
+
                         <TextBlock Style="{StaticResource H}" Text="Model"/>
                         <ComboBox x:Name="ModelBox" IsEditable="True">
                             <ComboBoxItem Content="claude-sonnet-5-5"/>
                             <ComboBoxItem Content="claude-opus-5-5"/>
                             <ComboBoxItem Content="claude-haiku-5-5"/>
+                            <ComboBoxItem Content="opencode-go/kimi-k3.1-pro"/>
+                            <ComboBoxItem Content="opencode-go/kimi-k2.7-code"/>
+                            <ComboBoxItem Content="opencode-go/glm-5.3"/>
+                            <ComboBoxItem Content="opencode-go/deepseek-v4-pro"/>
+                            <ComboBoxItem Content="opencode-go/deepseek-v4.1-flash"/>
+                            <ComboBoxItem Content="opencode-go/qwen3.8-max"/>
+                            <ComboBoxItem Content="opencode-go/minimax-m3"/>
+                            <ComboBoxItem Content="opencode-go/mimo-v2.6-pro"/>
                         </ComboBox>
-                        <TextBlock Style="{StaticResource Hint}" Text="Sonnet is the best everyday balance. Opus is the strongest but costs more. Haiku is cheapest."/>
+                        <Button Style="{StaticResource PillButton}" Background="#2E2840" Content="Refresh OpenCode Go models" HorizontalAlignment="Left" Margin="0,6,0,0" Click="LoadGoModels_Click"/>
+                        <TextBlock Style="{StaticResource Hint}" Text="Claude: Sonnet is the best everyday balance, Opus the strongest, Haiku the cheapest. 'opencode-go/...' models run on your OpenCode Go subscription (flat fee) - Kimi K3.1 Pro, Kimi K2.7 Code and GLM 5.3 are strong at tool use. Any model id from opencode.ai/zen/go/v1/models works with the opencode-go/ prefix. Go models can't use Claude's built-in web search; they browse instead."/>
 
                         <CheckBox x:Name="AutoBox" Content="Auto mode: act without asking me first"/>
                         <CheckBox x:Name="SilentBox" Content="Silent mode: work invisibly (hidden windows, headless browser)"/>
@@ -216,6 +229,10 @@
                         <ComboBox x:Name="WatchModelBox" IsEditable="True" Width="260" HorizontalAlignment="Left">
                             <ComboBoxItem Content="claude-haiku-5-5"/>
                             <ComboBoxItem Content="claude-sonnet-5-5"/>
+                            <ComboBoxItem Content="opencode-go/deepseek-v4.1-flash"/>
+                            <ComboBoxItem Content="opencode-go/glm-5.3-flash"/>
+                            <ComboBoxItem Content="opencode-go/qwen3.8-flash"/>
+                            <ComboBoxItem Content="opencode-go/minimax-m3.1-flash"/>
                         </ComboBox>
                         <TextBlock Style="{StaticResource H}" Text="Never look at (apps or window titles, one per line)"/>
                         <TextBox x:Name="ExcludeBox" AcceptsReturn="True" Height="80" VerticalScrollBarVisibility="Auto"/>
@@ -340,6 +357,10 @@
                         <ComboBox x:Name="CheapModelBox" IsEditable="True" Width="260" HorizontalAlignment="Left">
                             <ComboBoxItem Content="claude-haiku-5-5"/>
                             <ComboBoxItem Content="claude-sonnet-5-5"/>
+                            <ComboBoxItem Content="opencode-go/deepseek-v4.1-flash"/>
+                            <ComboBoxItem Content="opencode-go/glm-5.3-flash"/>
+                            <ComboBoxItem Content="opencode-go/qwen3.8-flash"/>
+                            <ComboBoxItem Content="opencode-go/minimax-m3.1-flash"/>
                         </ComboBox>
                         <Button Style="{StaticResource PillButton}" Background="#2E2840" Content="Open usage log" HorizontalAlignment="Left" Margin="0,8,0,0" Click="OpenUsage_Click"/>
 
@@ -446,6 +467,32 @@
                         <Button Style="{StaticResource PillButton}" Background="#2E2840" Content="Re-import from Claude Desktop" Click="ReimportMcp_Click"/>
                     </StackPanel>
                 </StackPanel>
+            </TabItem>
+
+            <!-- ================= Passwords ================= -->
+            <TabItem Header="Passwords">
+                <ScrollViewer>
+                    <StackPanel>
+                        <TextBlock Style="{StaticResource Hint}" Margin="0,0,0,8" Text="Save logins and app passwords here so Thokolosi can use them for you. Each password is encrypted for this Windows user on this PC (never stored as plain text). Entries save immediately when you press Save password; the main Save button is not needed. Thokolosi can list the names and, in Auto mode, read one when a task needs it."/>
+                        <TextBlock Style="{StaticResource H}" Text="Saved passwords" Margin="0,0,0,4"/>
+                        <ListBox x:Name="VaultList" Height="150" Background="#241F33" Foreground="{StaticResource Text}" BorderBrush="#3A3350" SelectionChanged="VaultList_SelectionChanged"/>
+                        <TextBlock Style="{StaticResource H}" Text="Name (e.g. gmail-mohapiw)"/>
+                        <TextBox x:Name="VaultNameBox"/>
+                        <TextBlock Style="{StaticResource H}" Text="Username or email"/>
+                        <TextBox x:Name="VaultUserBox"/>
+                        <TextBlock Style="{StaticResource H}" Text="Password"/>
+                        <PasswordBox x:Name="VaultPwBox"/>
+                        <TextBlock x:Name="VaultPwHint" Style="{StaticResource Hint}" Text="Required for a new entry. For an existing entry leave it blank to keep the saved password."/>
+                        <TextBlock Style="{StaticResource H}" Text="Notes (what it is for)"/>
+                        <TextBox x:Name="VaultNotesBox"/>
+                        <StackPanel Orientation="Horizontal" Margin="0,10,0,0">
+                            <Button Style="{StaticResource PillButton}" Content="Save password" Click="VaultSave_Click" Margin="0,0,8,0"/>
+                            <Button Style="{StaticResource PillButton}" Background="#2E2840" Content="New" Click="VaultNew_Click" Margin="0,0,8,0"/>
+                            <Button Style="{StaticResource PillButton}" Background="#2E2840" Content="Delete" Click="VaultDelete_Click"/>
+                        </StackPanel>
+                        <TextBlock x:Name="VaultStatus" Style="{StaticResource Hint}" Margin="0,8,0,0"/>
+                    </StackPanel>
+                </ScrollViewer>
             </TabItem>
         </TabControl>
 

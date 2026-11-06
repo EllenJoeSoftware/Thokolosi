@@ -1,8 +1,8 @@
 {
   "version": 2,
-  "dgSpecHash": "MiO0RIhLqxE=",
+  "dgSpecHash": "kOb2K8AZyq8=",
   "success": true,
-  "projectFilePath": "C:\\Users\\Wycliffe\\source\\repos\\Agent\\src\\Thokolosi\\Thokolosi.csproj",
+  "projectFilePath": "c:\\Users\\Wycliffe\\source\\repos\\Agent\\src\\Thokolosi\\Thokolosi_i10insyi_wpftmp.csproj",
   "expectedPackageFiles": [
     "C:\\Users\\Wycliffe\\.nuget\\packages\\bouncycastle.cryptography\\2.4.0\\bouncycastle.cryptography.2.4.0.nupkg.sha512",
     "C:\\Users\\Wycliffe\\.nuget\\packages\\documentformat.openxml\\3.1.0\\documentformat.openxml.3.1.0.nupkg.sha512",
@@ -48,9 +48,9 @@
       "code": "NU1902",
       "level": "Warning",
       "message": "Package 'MailKit' 4.8.0 has a known moderate severity vulnerability, https://github.com/advisories/GHSA-9j88-vvj5-vhgr",
-      "projectPath": "C:\\Users\\Wycliffe\\source\\repos\\Agent\\src\\Thokolosi\\Thokolosi.csproj",
+      "projectPath": "c:\\Users\\Wycliffe\\source\\repos\\Agent\\src\\Thokolosi\\Thokolosi_i10insyi_wpftmp.csproj",
       "warningLevel": 1,
-      "filePath": "C:\\Users\\Wycliffe\\source\\repos\\Agent\\src\\Thokolosi\\Thokolosi.csproj",
+      "filePath": "c:\\Users\\Wycliffe\\source\\repos\\Agent\\src\\Thokolosi\\Thokolosi_i10insyi_wpftmp.csproj",
       "libraryId": "MailKit",
       "targetGraphs": [
         "net8.0-windows",

@@ -802,10 +802,13 @@ C:\Users\Wycliffe\source\repos\Agent\dist\Thokolosi\zh-Hant\UIAutomationTypes.re
 C:\Users\Wycliffe\source\repos\Agent\dist\Thokolosi\zh-Hant\WindowsBase.resources.dll
 C:\Users\Wycliffe\source\repos\Agent\dist\Thokolosi\zh-Hant\WindowsFormsIntegration.resources.dll
 C:\Users\Wycliffe\source\repos\Agent\dist\Thokolosi\BouncyCastle.Cryptography.dll
+C:\Users\Wycliffe\source\repos\Agent\dist\Thokolosi\DocumentFormat.OpenXml.dll
+C:\Users\Wycliffe\source\repos\Agent\dist\Thokolosi\DocumentFormat.OpenXml.Framework.dll
 C:\Users\Wycliffe\source\repos\Agent\dist\Thokolosi\MailKit.dll
 C:\Users\Wycliffe\source\repos\Agent\dist\Thokolosi\Microsoft.Bcl.AsyncInterfaces.dll
 C:\Users\Wycliffe\source\repos\Agent\dist\Thokolosi\Microsoft.Playwright.dll
 C:\Users\Wycliffe\source\repos\Agent\dist\Thokolosi\MimeKit.dll
+C:\Users\Wycliffe\source\repos\Agent\dist\Thokolosi\MQTTnet.dll
 C:\Users\Wycliffe\source\repos\Agent\dist\Thokolosi\NAudio.dll
 C:\Users\Wycliffe\source\repos\Agent\dist\Thokolosi\NAudio.Asio.dll
 C:\Users\Wycliffe\source\repos\Agent\dist\Thokolosi\NAudio.Core.dll
@@ -813,5 +816,13 @@ C:\Users\Wycliffe\source\repos\Agent\dist\Thokolosi\NAudio.Midi.dll
 C:\Users\Wycliffe\source\repos\Agent\dist\Thokolosi\NAudio.Wasapi.dll
 C:\Users\Wycliffe\source\repos\Agent\dist\Thokolosi\NAudio.WinForms.dll
 C:\Users\Wycliffe\source\repos\Agent\dist\Thokolosi\NAudio.WinMM.dll
+C:\Users\Wycliffe\source\repos\Agent\dist\Thokolosi\UglyToad.PdfPig.Core.dll
+C:\Users\Wycliffe\source\repos\Agent\dist\Thokolosi\UglyToad.PdfPig.DocumentLayoutAnalysis.dll
+C:\Users\Wycliffe\source\repos\Agent\dist\Thokolosi\UglyToad.PdfPig.Fonts.dll
+C:\Users\Wycliffe\source\repos\Agent\dist\Thokolosi\UglyToad.PdfPig.Package.dll
+C:\Users\Wycliffe\source\repos\Agent\dist\Thokolosi\UglyToad.PdfPig.Tokenization.dll
+C:\Users\Wycliffe\source\repos\Agent\dist\Thokolosi\UglyToad.PdfPig.Tokens.dll
+C:\Users\Wycliffe\source\repos\Agent\dist\Thokolosi\UglyToad.PdfPig.dll
+C:\Users\Wycliffe\source\repos\Agent\dist\Thokolosi\QRCoder.dll
 C:\Users\Wycliffe\source\repos\Agent\dist\Thokolosi\System.Speech.dll
 C:\Users\Wycliffe\source\repos\Agent\dist\Thokolosi\Whisper.net.dll

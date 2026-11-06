@@ -26,6 +26,9 @@ public partial class SettingsWindow : Window
         KeyHint.Text = string.IsNullOrEmpty(cfg.ApiKey)
             ? "Required. Get a key at console.anthropic.com > API keys. Stored encrypted for this Windows user only."
             : "A key is saved. Leave blank to keep it, or paste a new one to replace it.";
+        OpenCodeHint.Text = string.IsNullOrEmpty(cfg.OpenCodeApiKey)
+            ? "For 'opencode-go/...' models. Get it at opencode.ai > your workspace > Go > API keys. Stored encrypted. Either key on its own is enough."
+            : "An OpenCode Go key is saved. Leave blank to keep it, or paste a new one to replace it.";
 
         // Job
         JobBox.Text = AppConfig.LoadJob();
@@ -123,7 +126,63 @@ public partial class SettingsWindow : Window
         McpStatusBox.Text = statusText.Length > 0 ? statusText
             : File.Exists(AppConfig.McpPath) ? "No servers connected (yet). Servers start in the background after launch." : "No mcp.json yet.";
 
+        // Passwords
+        RefreshVault();
+
         _loading = false;
+    }
+
+    // ---------- Passwords (saved immediately, encrypted with Windows DPAPI) ----------
+
+    void RefreshVault(string? select = null)
+    {
+        VaultList.ItemsSource = Vault.Load().Select(e => e.Name).ToList();
+        if (select != null) VaultList.SelectedItem = select;
+    }
+
+    void VaultList_SelectionChanged(object sender, SelectionChangedEventArgs e)
+    {
+        if (VaultList.SelectedItem is not string name) return;
+        var entry = Vault.Find(name);
+        if (entry == null) return;
+        VaultNameBox.Text = entry.Name;
+        VaultUserBox.Text = entry.Username;
+        VaultNotesBox.Text = entry.Notes;
+        VaultPwBox.Password = "";
+        VaultPwHint.Text = "A password is saved for this entry. Leave blank to keep it, or type a new one to replace it.";
+    }
+
+    void VaultNew_Click(object sender, RoutedEventArgs e)
+    {
+        VaultList.SelectedItem = null;
+        VaultNameBox.Text = VaultUserBox.Text = VaultNotesBox.Text = "";
+        VaultPwBox.Password = "";
+        VaultPwHint.Text = "Required for a new entry. For an existing entry leave it blank to keep the saved password.";
+        VaultStatus.Text = "";
+    }
+
+    void VaultSave_Click(object sender, RoutedEventArgs e)
+    {
+        try
+        {
+            var name = VaultNameBox.Text.Trim();
+            Vault.Set(name, VaultUserBox.Text, VaultPwBox.Password, VaultNotesBox.Text);
+            VaultPwBox.Password = "";
+            RefreshVault(name);
+            VaultStatus.Text = $"Saved '{name}' (encrypted).";
+        }
+        catch (Exception ex) { VaultStatus.Text = "Not saved: " + ex.Message; }
+    }
+
+    void VaultDelete_Click(object sender, RoutedEventArgs e)
+    {
+        var name = VaultNameBox.Text.Trim();
+        if (name.Length == 0 || Vault.Find(name) == null) { VaultStatus.Text = "Select a saved entry first."; return; }
+        if (MessageBox.Show($"Delete the saved password '{name}'?", "Thokolosi", MessageBoxButton.YesNo, MessageBoxImage.Question) != MessageBoxResult.Yes) return;
+        Vault.Remove(name);
+        VaultNew_Click(sender, e);
+        RefreshVault();
+        VaultStatus.Text = $"Deleted '{name}'.";
     }
 
     static void SelectByTag(ComboBox box, string tag)
@@ -178,13 +237,18 @@ public partial class SettingsWindow : Window
         var app = App.Current;
         var cfg = app.Config;
 
-        if (!string.IsNullOrWhiteSpace(ApiKeyBox.Password)) cfg.ApiKey = ApiKeyBox.Password;
-        if (string.IsNullOrEmpty(cfg.ApiKey))
+        if (!string.IsNullOrWhiteSpace(ApiKeyBox.Password)) cfg.ApiKey = ApiKeyBox.Password.Trim();
+        if (!string.IsNullOrWhiteSpace(OpenCodeKeyBox.Password)) cfg.OpenCodeApiKey = OpenCodeKeyBox.Password.Trim();
+        var model = string.IsNullOrWhiteSpace(ModelBox.Text) ? "claude-haiku-5-5" : ModelBox.Text.Trim();
+        if (!cfg.HasKeyFor(model))
         {
-            MessageBox.Show(this, "Thokolosi needs a Claude API key to work.", "Thokolosi", MessageBoxButton.OK, MessageBoxImage.Warning);
+            MessageBox.Show(this, Core.OpenCodeGo.Handles(model)
+                    ? $"{model} runs on OpenCode Go. Paste your OpenCode Go API key, or pick a Claude model."
+                    : "Thokolosi needs a Claude API key for Claude models. Paste one, or add an OpenCode Go key and pick an 'opencode-go/...' model.",
+                "Thokolosi", MessageBoxButton.OK, MessageBoxImage.Warning);
             return;
         }
-        cfg.Model = string.IsNullOrWhiteSpace(ModelBox.Text) ? "claude-sonnet-5-5" : ModelBox.Text.Trim();
+        cfg.Model = model;
         cfg.StartWithWindows = StartupBox.IsChecked == true;
         cfg.CodeFolders = Lines(CodeFoldersBox.Text, '\n');
 
@@ -304,6 +368,29 @@ public partial class SettingsWindow : Window
     }
 
     // ---------- spending / offline ----------
+
+    /// <summary>Replace the opencode-go entries in the model pickers with the gateway's current list.</summary>
+    async void LoadGoModels_Click(object sender, RoutedEventArgs e)
+    {
+        var btn = (System.Windows.Controls.Button)sender;
+        btn.IsEnabled = false;
+        try
+        {
+            var models = await Core.OpenCodeGo.UsableModelsAsync(CancellationToken.None);
+            foreach (var box in new[] { ModelBox, CheapModelBox, WatchModelBox })
+            {
+                var text = box.Text;
+                foreach (var old in box.Items.OfType<System.Windows.Controls.ComboBoxItem>()
+                             .Where(i => (i.Content as string)?.StartsWith(Core.OpenCodeGo.Prefix) == true).ToList())
+                    box.Items.Remove(old);
+                foreach (var m in models) box.Items.Add(new System.Windows.Controls.ComboBoxItem { Content = m });
+                box.Text = text;
+            }
+            MessageBox.Show(this, $"{models.Count} OpenCode Go models with tool support are now in the model lists.", "Thokolosi");
+        }
+        catch (Exception ex) { MessageBox.Show(this, "Couldn't load the OpenCode Go model list: " + ex.Message, "Thokolosi"); }
+        finally { btn.IsEnabled = true; }
+    }
 
     void OpenUsage_Click(object sender, RoutedEventArgs e) => App.OpenFolder(Path.Combine(AppConfig.Dir, "usage"));
 

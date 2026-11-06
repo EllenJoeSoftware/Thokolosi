@@ -2718,11 +2718,11 @@
     "C:\\Program Files (x86)\\Microsoft Visual Studio\\Shared\\NuGetPackages": {}
   },
   "project": {
-    "version": "0.4.0",
+    "version": "0.6.0",
     "restore": {
-      "projectUniqueName": "C:\\Users\\Wycliffe\\source\\repos\\Agent\\src\\Thokolosi\\Thokolosi.csproj",
+      "projectUniqueName": "c:\\Users\\Wycliffe\\source\\repos\\Agent\\src\\Thokolosi\\Thokolosi_i10insyi_wpftmp.csproj",
       "projectName": "Thokolosi",
-      "projectPath": "C:\\Users\\Wycliffe\\source\\repos\\Agent\\src\\Thokolosi\\Thokolosi.csproj",
+      "projectPath": "c:\\Users\\Wycliffe\\source\\repos\\Agent\\src\\Thokolosi\\Thokolosi_i10insyi_wpftmp.csproj",
       "packagesPath": "C:\\Users\\Wycliffe\\.nuget\\packages\\",
       "outputPath": "C:\\Users\\Wycliffe\\source\\repos\\Agent\\src\\Thokolosi\\obj\\",
       "projectStyle": "PackageReference",

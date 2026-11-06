@@ -221,8 +221,8 @@ public sealed class MeetingService : IDisposable
             string notes;
             if (string.IsNullOrWhiteSpace(transcript))
                 notes = "_No speech was captured. Check that meeting audio played through this PC's default speakers/headset._";
-            else if (string.IsNullOrEmpty(_cfg.ApiKey))
-                notes = "_No Claude API key set, so no summary. Transcript below._";
+            else if (!_cfg.HasKeyFor(_cfg.Model))
+                notes = "_No API key set for the chat model, so no summary. Transcript below._";
             else
                 notes = await SummariseAsync(m, transcript);
 
@@ -277,7 +277,7 @@ public sealed class MeetingService : IDisposable
         {
             new JsonObject { ["type"] = "text", ["text"] = $"Meeting: {m.Subject}\nDate: {m.Started:yyyy-MM-dd HH:mm}\n\nTranscript:\n{Json.Truncate(transcript, 400_000)}" }
         };
-        return await _claude.CompleteAsync(_cfg.ApiKey!, _cfg.Model, system, content, 4000, CancellationToken.None);
+        return await _claude.CompleteAsync(_cfg.KeyFor(_cfg.Model), _cfg.Model, system, content, 4000, CancellationToken.None);
     }
 
     public void Dispose()

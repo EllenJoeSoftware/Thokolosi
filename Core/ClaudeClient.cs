@@ -10,11 +10,27 @@ public class ClaudeApiException(string message, HttpStatusCode? status = null) :
     public HttpStatusCode? Status { get; } = status;
 }
 
-/// <summary>Minimal client for the Anthropic Messages API (no SDK dependency).</summary>
+/// <summary>
+/// Minimal client for the Anthropic Messages API (no SDK dependency). Models named "opencode-go/..." are sent to
+/// OpenCode Go instead (see <see cref="OpenCodeGo"/>), and come back in the same Anthropic shape.
+/// </summary>
 public class ClaudeClient
 {
     static readonly HttpClient Http = new() { Timeout = TimeSpan.FromMinutes(10) };
     const string Endpoint = "https://api.anthropic.com/v1/messages";
+
+    /// <summary>Supplies the OpenCode Go key (set once at startup from the config).</summary>
+    public static Func<string?> OpenCodeKey { get; set; } = () => null;
+
+    /// <summary>
+    /// Conversation id sent to OpenCode Go as x-opencode-session (required; it keeps prompt caching per conversation).
+    /// Each client gets its own; the agent renews it when a new chat starts.
+    /// </summary>
+    public string SessionId { get; set; } = NewSessionId();
+
+    public static string NewSessionId() => "thokolosi-" + Guid.NewGuid().ToString("N");
+
+    static readonly string UserAgent = "Thokolosi/" + (typeof(ClaudeClient).Assembly.GetName().Version?.ToString(3) ?? "1.0");
 
     public async Task<JsonObject> SendAsync(string apiKey, JsonObject body, CancellationToken ct, string source = "chat")
     {
@@ -25,11 +41,32 @@ public class ClaudeClient
 
     async Task<JsonObject> SendRawAsync(string apiKey, JsonObject body, CancellationToken ct)
     {
+        var model = body["model"]?.GetValue<string>() ?? "";
+        var openCode = OpenCodeGo.Handles(model);
+        bool chat = false;
+        string endpoint = Endpoint, provider = "Claude API";
+        if (openCode)
+        {
+            apiKey = OpenCodeKey() ?? throw new ClaudeApiException("No OpenCode Go API key set. Add it in Settings > General.");
+            var info = await OpenCodeGo.ResolveAsync(OpenCodeGo.RawId(model), ct);
+            if (!info.Supported)
+                throw new ClaudeApiException($"{model} uses OpenCode's '{info.Api}' API, which Thokolosi can't speak yet. Pick another opencode-go model (Kimi, GLM, DeepSeek, Qwen, MiniMax, MiMo...).");
+            chat = info.Api == "chat-completions";
+            body = chat ? OpenCodeGo.ToChatBody(body, info.Images) : OpenCodeGo.ToMessagesBody(body, info.Images);
+            endpoint = info.BaseUrl + (chat ? "/chat/completions" : "/messages");
+            provider = "OpenCode Go";
+        }
         var payload = body.ToJsonString();
         for (int attempt = 0; ; attempt++)
         {
-            using var req = new HttpRequestMessage(HttpMethod.Post, Endpoint);
-            req.Headers.Add("x-api-key", apiKey);
+            using var req = new HttpRequestMessage(HttpMethod.Post, endpoint);
+            if (openCode)
+            {
+                req.Headers.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", apiKey);
+                req.Headers.Add("x-opencode-session", SessionId);
+                req.Headers.TryAddWithoutValidation("User-Agent", UserAgent);
+            }
+            else req.Headers.Add("x-api-key", apiKey);
             req.Headers.Add("anthropic-version", "2023-06-01");
             req.Content = new StringContent(payload, Encoding.UTF8, "application/json");
 
@@ -45,7 +82,11 @@ public class ClaudeClient
             {
                 var text = await resp.Content.ReadAsStringAsync(ct);
                 if (resp.IsSuccessStatusCode)
-                    return JsonNode.Parse(text)!.AsObject();
+                {
+                    var json = JsonNode.Parse(text)!.AsObject();
+                    if (chat && json["error"] != null) throw new ClaudeApiException($"{provider} error: {Extract(text)}");
+                    return chat ? OpenCodeGo.FromChatResponse(json, model) : json;
+                }
 
                 var code = (int)resp.StatusCode;
                 bool retryable = code is 408 or 429 or 500 or 502 or 503 or 504 or 529;
@@ -54,7 +95,7 @@ public class ClaudeClient
                     await Task.Delay(Backoff(attempt), ct);
                     continue;
                 }
-                throw new ClaudeApiException($"Claude API error {code}: {Extract(text)}", resp.StatusCode);
+                throw new ClaudeApiException($"{provider} error {code}: {Extract(text)}", resp.StatusCode);
             }
         }
     }
@@ -79,7 +120,11 @@ public class ClaudeClient
 
     static string Extract(string body)
     {
-        try { return JsonNode.Parse(body)?["error"]?["message"]?.GetValue<string>() ?? body; }
+        try
+        {
+            var e = JsonNode.Parse(body)?["error"];
+            return (e is JsonValue ev && ev.TryGetValue<string>(out var es) ? es : e?["message"]?.GetValue<string>()) ?? body;
+        }
         catch { return body; }
     }
 }

@@ -8,13 +8,12 @@
       </requestedPrivileges>
     </security>
   </trustInfo>
-  <application xmlns="urn:schemas-microsoft-com:asm.v3">
-    <windowsSettings>
-      <!-- Per-monitor DPI: screenshots, snipping and UI Automation use real pixel coordinates on every monitor. -->
-      <dpiAware xmlns="http://schemas.microsoft.com/SMI/2005/WindowsSettings">true/PM</dpiAware>
-      <dpiAwareness xmlns="http://schemas.microsoft.com/SMI/2016/WindowsSettings">PerMonitorV2, PerMonitor</dpiAwareness>
-    </windowsSettings>
-  </application>
+  <!--
+    DPI: per-monitor awareness is set with <ApplicationHighDpiMode> in Thokolosi.csproj (WPF reads it from the generated
+    manifest). The dpiAware/dpiAwareness settings that used to be here were ignored by WPF's own generated manifest and
+    produced warning WFAC010, so they were removed.
+    The application/compatibility sections below are merged into the generated manifest.
+  -->
   <compatibility xmlns="urn:schemas-microsoft-com:compatibility.v1">
     <application>
       <supportedOS Id="{8e0f7a12-bfb3-4fe8-b9a5-48fd50a15a9a}" />

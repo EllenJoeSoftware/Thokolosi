@@ -12,7 +12,9 @@
     <RootNamespace>Thokolosi</RootNamespace>
     <ApplicationIcon>Assets\thokolosi.ico</ApplicationIcon>
     <ApplicationManifest>app.manifest</ApplicationManifest>
-    <Version>0.4.0</Version>
+    <!-- Per-monitor DPI (replaces the dpiAware/dpiAwareness manifest entries; screenshots and UI Automation need real pixels). -->
+    <ApplicationHighDpiMode>PerMonitorV2</ApplicationHighDpiMode>
+    <Version>0.6.0</Version>
     <Product>Thokolosi</Product>
     <Company>EllenJoe Software</Company>
     <RuntimeIdentifier>win-x64</RuntimeIdentifier>
@@ -28,7 +30,8 @@
   <ItemGroup>
     <PackageReference Include="Microsoft.Playwright" Version="1.47.0" />
     <PackageReference Include="System.Security.Cryptography.ProtectedData" Version="8.0.0" />
-    <PackageReference Include="MailKit" Version="4.8.0" />
+    <!-- 4.8.1+ fixes GHSA-9j88-vvj5-vhgr; 4.18.x is the current stable release with the same API surface we use. -->
+    <PackageReference Include="MailKit" Version="4.18.2" />
     <PackageReference Include="NAudio" Version="2.2.1" />
     <PackageReference Include="Whisper.net" Version="1.7.4" />
     <PackageReference Include="Whisper.net.Runtime" Version="1.7.4" />

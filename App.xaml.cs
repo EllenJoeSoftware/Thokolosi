@@ -32,6 +32,8 @@ public partial class App : Application, INotifier
     public ActivityWatcher Watcher { get; private set; } = null!;
     public PhoneLink? Phone { get; private set; }
     Scheduler? _scheduler;
+    KanbanPoller? _kanban;
+    public Thokolosi.Core.Profile.UserModelBuilder? ProfileBuilder { get; private set; }
     MessagingBridge? _messaging;
     BrowserTool? _browser;
     readonly List<GlobalHotkey> _hotkeys = new();
@@ -58,6 +60,7 @@ public partial class App : Application, INotifier
         Config = AppConfig.Load();
         ApplyStartWithWindows();
         UsageTracker.Config = Config;
+        ClaudeClient.OpenCodeKey = () => Config.OpenCodeApiKey;
         UsageTracker.Alert += (t, m) => Notify(t, m);
         UsageTracker.Changed += () => PublishInfo();
 
@@ -66,10 +69,17 @@ public partial class App : Application, INotifier
         Agent = new Agent(Config, Tools, AppConfig.HistoryPath);
 
         Watcher = new ActivityWatcher(Config);
+        Thokolosi.Core.Agent.LiveContext = () => Watcher.Snapshot();   // "what am I busy with?" is answerable instantly
+        ProfileBuilder = new Thokolosi.Core.Profile.UserModelBuilder(Config, () => Watcher.Snapshot());   // learns about the user from day one
         Watcher.Suggested += s => Dispatcher.Invoke(() =>
-            Notify("Thokolosi suggests: " + s.Title, s.Message + "\nClick to let me do it.", () => { Chat.ShowNearTray(); Chat.Prefill(s.Prompt); }));
+        {
+            // Pop-ups vanish (and Focus Assist hides them), so also keep the suggestion in the chat.
+            Chat.AddExternal($"Suggestion: {s.Title} - {s.Message}\nTask: {s.Prompt}");
+            Notify("Thokolosi suggests: " + s.Title, s.Message + "\nClick to let me do it.", () => { Chat.ShowNearTray(); Chat.Prefill(s.Prompt); });
+        });
 
         _scheduler = new Scheduler(Config, job => RunBackgroundTaskAsync(job.Name, job.Prompt));
+        _kanban = new KanbanPoller((title, prompt) => RunBackgroundTaskCoreAsync(title, prompt, trackOnBoard: false));   // checks the Easy Kanban board every 5s
         _messaging = new MessagingBridge(Config, Tools, (title, prompt) => Dispatcher.Invoke(() => Chat.SubmitRemoteAsync(prompt, "message", title)));
 
         Speaker.Configure(Config.Voice.VoiceName, Config.Voice.Rate);
@@ -93,7 +103,7 @@ public partial class App : Application, INotifier
         _updateTimer = new System.Threading.Timer(_ => _ = CheckForUpdatesAsync(manual: false), null, TimeSpan.FromMinutes(2), TimeSpan.FromHours(6));
         if (e.Args.Contains("--updated")) Notify("Thokolosi updated", $"Now running version {Updater.Current.ToString(3)}.");
 
-        if (string.IsNullOrEmpty(Config.ApiKey)) OpenSettings();
+        if (!Config.HasAnyKey) OpenSettings();
         else if (!e.Args.Contains("--tray")) Chat.ShowNearTray();
     }
 
@@ -105,7 +115,7 @@ public partial class App : Application, INotifier
             new PowerShellTool(), new ReadFileTool(), new WriteFileTool(), new EditFileTool(), new ListDirectoryTool(), new SearchFilesTool(),
             _browser, new ScreenshotTool(), new DesktopTool(),
             new OutlookTool(), new EmailTool(), new SlackTool(), new MeetingTool(Meetings),
-            new MemoryTool(), new PlaybookTool(),
+            new MemoryTool(), new PlaybookTool(), new SendToPhoneTool(() => Phone), new SecretsTool(), new SeeWindowTool(), new UserModelTool(),
         })
             Tools.Add(t);
         ExtraTools.Register(this);
@@ -137,6 +147,21 @@ public partial class App : Application, INotifier
             Notify("Thokolosi", "Job description updated from your phone.");
         });
         link.PlaybooksChangedRemotely += SyncPlaybooksFromPhone;
+        link.FileReceived += (path, caption, from) => Dispatcher.Invoke(() =>
+        {
+            var name = System.IO.Path.GetFileName(path);
+            if (caption.Trim().Length > 0)
+            {
+                // A file with a request ("summarise this", "print it") goes to the agent like a drag-and-drop attachment.
+                _ = Chat.SubmitRemoteAsync($"{caption}\n\n(Sent from {from}; saved at {path})", "phone", from,
+                    new[] { new Attachment(path, Agent.IsImageFile(path)) });
+            }
+            else
+            {
+                Chat.AddExternal($"Received {name} from {from}. Saved to {path}");
+                Notify("File from " + from, $"{name} saved in Downloads\\Thokolosi. Click to show it.", () => ShowInExplorer(path));
+            }
+        });
         Phone = link;
         await link.StartAsync();
         if (link.Connected)
@@ -295,9 +320,16 @@ public partial class App : Application, INotifier
         _autoJoinItem = new WinForms.ToolStripMenuItem("Auto-join Teams meetings") { CheckOnClick = true };
         _autoJoinItem.Click += (_, _) => { Config.Meetings.AutoJoin = _autoJoinItem.Checked; Config.Save(); };
         menu.Items.AddRange(new WinForms.ToolStripItem[] { _autoItem, _silentItem, _watchItem, _autoJoinItem });
+        menu.Items.Add("Suggest something now", null, async (_, _) =>
+        {
+            Notify("Thokolosi", "Looking at what you're doing...");
+            await Task.Run(() => Watcher.ReviewNowAsync());
+            if (!Watcher.LastResult.Contains("suggested:")) Notify("Thokolosi", Watcher.LastResult);
+        });
         menu.Items.Add(new WinForms.ToolStripSeparator());
 
         menu.Items.Add("Talk to Thokolosi", null, (_, _) => Chat.ToggleListening());
+        menu.Items.Add("Send a file to my phone...", null, async (_, _) => await SendFileToPhoneAsync());
         menu.Items.Add("Snip screen", null, async (_, _) => await SnipAsync());
         menu.Items.Add("Clipboard actions", null, (_, _) => ShowClipboardMenu());
         _notesItem = new WinForms.ToolStripMenuItem("Take meeting notes now");
@@ -331,6 +363,7 @@ public partial class App : Application, INotifier
         _autoItem.Checked = Config.AutoMode;
         _silentItem!.Checked = Config.SilentMode;
         _watchItem!.Checked = Config.Watcher.Enabled;
+        _watchItem.ToolTipText = "Last review: " + Watcher.LastResult;
         _autoJoinItem!.Checked = Config.Meetings.AutoJoin;
         _notesItem!.Text = Meetings.IsRecording ? "Stop meeting notes" : "Take meeting notes now";
         _spendItem!.Text = "Spend: " + UsageTracker.Summary();
@@ -458,14 +491,48 @@ public partial class App : Application, INotifier
         Phone?.Post("notify", new JsonObject { ["title"] = title, ["text"] = text });
     }
 
-    /// <summary>Runs a prompt with a fresh, separate agent (scheduled jobs, after-meeting tasks) and reports back.</summary>
-    public async Task RunBackgroundTaskAsync(string title, string prompt)
+    static void ShowInExplorer(string path)
     {
-        if (string.IsNullOrEmpty(Config.ApiKey)) return;
+        try { System.Diagnostics.Process.Start("explorer.exe", $"/select,\"{path}\""); } catch { }
+    }
+
+    /// <summary>Pick a file and send it to the paired phone(s).</summary>
+    public async Task SendFileToPhoneAsync(string? path = null)
+    {
+        if (Phone is not { Connected: true }) { Notify("Thokolosi", "The phone link isn't connected. Check Settings > Phone."); return; }
+        if (Phone.Phones.Count == 0) { Notify("Thokolosi", "No phone is paired yet. Use Settings > Phone > Pair a phone."); return; }
+        if (path == null)
+        {
+            var dlg = new Microsoft.Win32.OpenFileDialog { Title = "Send a file to your phone", CheckFileExists = true };
+            if (dlg.ShowDialog() != true) return;
+            path = dlg.FileName;
+        }
+        var name = System.IO.Path.GetFileName(path);
+        try
+        {
+            Notify("Thokolosi", $"Sending {name} to your phone...");
+            await Task.Run(() => Phone.SendFileAsync(path, null, null, CancellationToken.None));
+            Chat.AddExternal($"Sent {name} to your phone.");
+            Notify("Thokolosi", $"{name} is on your phone.");
+        }
+        catch (Exception ex) { Notify("Couldn't send " + name, ex.Message); }
+    }
+
+    /// <summary>Runs a prompt with a fresh, separate agent (scheduled jobs, after-meeting tasks) and reports back.</summary>
+    public Task RunBackgroundTaskAsync(string title, string prompt) => RunBackgroundTaskCoreAsync(title, prompt, trackOnBoard: true);
+
+    async Task RunBackgroundTaskCoreAsync(string title, string prompt, bool trackOnBoard)
+    {
+        if (!Config.HasKeyFor(Config.Model)) return;
         var agent = new Agent(Config, Tools, historyPath: null)
         {
             RunContext = $"This is a background task ('{title}') started automatically, not a live chat. The user is not watching; " +
-                         "do the work, then finish with a short summary of the result for a notification.",
+                         "do the work, then finish with a short summary of the result for a notification." +
+                         (trackOnBoard
+                            ? " Easy Kanban tracking (only if the easy-kanban tools are available, otherwise skip silently): at the start use list_boards, then create_card on board 'Agent Operations' " +
+                              $"in the In Progress column titled '{title}' with label 'scheduled' and a one-line description; use log_progress at milestones; at the end call complete_card with a short Markdown result " +
+                              "(moveTo done for routine runs, review if Wycliffe needs to look at something or decide). If you fail, call fail_card. Never use claim_next_card for this."
+                            : ""),
             ApprovalHandler = (t, d, c) => RequestApprovalAsync(t, d, c),
         };
         string? last = null;
@@ -610,7 +677,7 @@ public partial class App : Application, INotifier
             if (_tray != null) _tray.Text = "Thokolosi - finishing meeting notes...";
             await Task.WhenAny(Meetings.PendingWork, Task.Delay(TimeSpan.FromMinutes(20)));
         }
-        try { _updateTimer?.Dispose(); _scheduler?.Dispose(); _messaging?.Dispose(); Watcher.Dispose(); Meetings.Dispose(); } catch { }
+        try { _updateTimer?.Dispose(); _scheduler?.Dispose(); _kanban?.Dispose(); ProfileBuilder?.Dispose(); _messaging?.Dispose(); Watcher.Dispose(); Meetings.Dispose(); } catch { }
         try { foreach (var h in _hotkeys) h.Dispose(); WakeWord.Dispose(); Speaker.Dispose(); } catch { }
         try { ExtraTools.Shutdown(); } catch { }
         try { if (Phone != null) await Phone.DisposeAsync(); } catch { }

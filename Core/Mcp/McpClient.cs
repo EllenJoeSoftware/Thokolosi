@@ -76,7 +76,7 @@ public abstract class McpClientBase : IMcpClient
 
     public async Task<JsonObject> CallToolAsync(string name, JsonObject args, CancellationToken ct)
     {
-        var res = await RequestAsync("tools/call", new JsonObject { ["name"] = name, ["arguments"] = args }, ct, TimeSpan.FromMinutes(5));
+        var res = await RequestAsync("tools/call", new JsonObject { ["name"] = name, ["arguments"] = args.DeepClone() }, ct, TimeSpan.FromMinutes(5));
         return res as JsonObject ?? new JsonObject();
     }
 
@@ -208,7 +208,7 @@ public class McpStdioClient : McpClientBase
         var tcs = new TaskCompletionSource<JsonNode>(TaskCreationOptions.RunContinuationsAsynchronously);
         _pending[id] = tcs;
         var msg = new JsonObject { ["jsonrpc"] = "2.0", ["id"] = id, ["method"] = method };
-        if (@params != null) msg["params"] = @params;
+        if (@params != null) msg["params"] = @params.Parent == null ? @params : @params.DeepClone();
         await WriteAsync(msg, ct);
 
         using var cts = CancellationTokenSource.CreateLinkedTokenSource(ct);
@@ -225,7 +225,7 @@ public class McpStdioClient : McpClientBase
     protected override Task NotifyAsync(string method, JsonObject? @params, CancellationToken ct)
     {
         var msg = new JsonObject { ["jsonrpc"] = "2.0", ["method"] = method };
-        if (@params != null) msg["params"] = @params;
+        if (@params != null) msg["params"] = @params.Parent == null ? @params : @params.DeepClone();
         return WriteAsync(msg, ct);
     }
 
@@ -262,7 +262,7 @@ public class McpHttpClient : McpClientBase
     {
         var id = Interlocked.Increment(ref _nextId);
         var msg = new JsonObject { ["jsonrpc"] = "2.0", ["id"] = id, ["method"] = method };
-        if (@params != null) msg["params"] = @params;
+        if (@params != null) msg["params"] = @params.Parent == null ? @params : @params.DeepClone();
 
         using var cts = CancellationTokenSource.CreateLinkedTokenSource(ct);
         cts.CancelAfter(timeout ?? TimeSpan.FromSeconds(60));
@@ -296,7 +296,7 @@ public class McpHttpClient : McpClientBase
     protected override async Task NotifyAsync(string method, JsonObject? @params, CancellationToken ct)
     {
         var msg = new JsonObject { ["jsonrpc"] = "2.0", ["method"] = method };
-        if (@params != null) msg["params"] = @params;
+        if (@params != null) msg["params"] = @params.Parent == null ? @params : @params.DeepClone();
         using var resp = await Http.SendAsync(Build(msg), ct);
     }
 

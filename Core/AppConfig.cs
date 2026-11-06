@@ -11,7 +11,7 @@ namespace Thokolosi.Core;
 public class AppConfig
 {
     public string? ApiKeyProtected { get; set; }
-    public string Model { get; set; } = "claude-sonnet-5-5";
+    public string Model { get; set; } = "claude-haiku-5-5";
     public int MaxTokens { get; set; } = 8192;
 
     /// <summary>Auto = act without asking. Off (Ask) = user approves every action that changes something.</summary>
@@ -45,9 +45,11 @@ public class AppConfig
     public List<EmailAccount> EmailAccounts { get; set; } = new();
     public bool OutlookEnabled { get; set; } = true;
     public string? SlackTokenProtected { get; set; }
+    public string? OpenCodeKeyProtected { get; set; }
     public bool McpEnabled { get; set; } = true;
     public MeetingSettings Meetings { get; set; } = new();
     public WatcherSettings Watcher { get; set; } = new();
+    public ProfileSettings Profile { get; set; } = new();
     public VoiceSettings Voice { get; set; } = new();
     public PhoneSettings Phone { get; set; } = new();
 
@@ -96,6 +98,26 @@ public class AppConfig
         get => Secret.Unprotect(SlackTokenProtected) ?? NullIfEmpty(Environment.GetEnvironmentVariable("SLACK_TOKEN"));
         set => SlackTokenProtected = Secret.Protect(value);
     }
+
+    /// <summary>OpenCode Go key (opencode.ai > Go > API keys), for models named "opencode-go/...".</summary>
+    [JsonIgnore]
+    public string? OpenCodeApiKey
+    {
+        get => Secret.Unprotect(OpenCodeKeyProtected) ?? NullIfEmpty(Environment.GetEnvironmentVariable("OPENCODE_API_KEY"));
+        set => OpenCodeKeyProtected = Secret.Protect(value);
+    }
+
+    /// <summary>True if a key exists for the provider that serves this model.</summary>
+    public bool HasKeyFor(string model) =>
+        !string.IsNullOrEmpty(OpenCodeGo.Handles(model) ? OpenCodeApiKey : ApiKey);
+
+    /// <summary>The key to pass for this model, or a clear error naming the missing one.</summary>
+    public string KeyFor(string model) => OpenCodeGo.Handles(model)
+        ? OpenCodeApiKey ?? throw new InvalidOperationException("No OpenCode Go API key set. Open Settings from the tray icon and paste it under General.")
+        : ApiKey ?? throw new InvalidOperationException("No Claude API key set. Open Settings from the tray icon and paste your key.");
+
+    /// <summary>At least one provider is set up.</summary>
+    [JsonIgnore] public bool HasAnyKey => !string.IsNullOrEmpty(ApiKey) || !string.IsNullOrEmpty(OpenCodeApiKey);
 
     static string? NullIfEmpty(string? s) => string.IsNullOrWhiteSpace(s) ? null : s;
 
@@ -198,6 +220,16 @@ public class MeetingSettings
     public string AfterMeetingPrompt { get; set; } = "";
 }
 
+/// <summary>Building the user model (Core\Profile). On by default on every install; set Enabled to false to stop.</summary>
+public class ProfileSettings
+{
+    public bool Enabled { get; set; } = true;
+    /// <summary>How often the model is refreshed when something new has happened.</summary>
+    public int IntervalMinutes { get; set; } = 30;
+    /// <summary>Model used to refine the model. Empty = same as the main model (Settings > General).</summary>
+    public string Model { get; set; } = "";
+}
+
 public class WatcherSettings
 {
     /// <summary>Watch which apps/windows you use and suggest ways to help.</summary>
@@ -209,8 +241,8 @@ public class WatcherSettings
     /// <summary>Include a low-res screenshot in the review.</summary>
     public bool UseScreenshots { get; set; } = true;
 
-    /// <summary>A cheaper model is fine for this background job.</summary>
-    public string Model { get; set; } = "claude-haiku-5-5";
+    /// <summary>Model for this background job. Empty = same as the main model (Settings > General).</summary>
+    public string Model { get; set; } = "";
 
     /// <summary>Never screenshot or log these apps or window titles (case-insensitive substring).</summary>
     public List<string> Exclude { get; set; } = new()
