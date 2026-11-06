@@ -8,11 +8,18 @@
       </requestedPrivileges>
     </security>
   </trustInfo>
-  <!--
-    DPI: per-monitor awareness (PerMonitorV2) is declared with <ApplicationHighDpiMode> in Thokolosi.csproj. The WPF/
-    WindowsForms SDK generates those dpiAware settings into the manifest itself, so declaring them here as well caused
-    warning WFAC010 and would duplicate them. Screenshots, snipping and UI Automation still get real pixel coordinates.
-  -->
+  <application xmlns="urn:schemas-microsoft-com:asm.v3">
+    <windowsSettings>
+      <!--
+        Per-monitor DPI: screenshots, snipping and UI Automation need real pixel coordinates on every monitor, including
+        when the user moves the window between screens with different scaling. These are deliberately declared in the
+        manifest (the authoritative place for a WPF app) instead of via ApplicationHighDpiMode; see NoWarn WFAC010 in
+        Thokolosi.csproj for why the SDK's duplicate-detection warning does not apply here.
+      -->
+      <dpiAware xmlns="http://schemas.microsoft.com/SMI/2005/WindowsSettings">true/PM</dpiAware>
+      <dpiAwareness xmlns="http://schemas.microsoft.com/SMI/2016/WindowsSettings">PerMonitorV2, PerMonitor</dpiAwareness>
+    </windowsSettings>
+  </application>
   <compatibility xmlns="urn:schemas-microsoft-com:compatibility.v1">
     <application>
       <supportedOS Id="{8e0f7a12-bfb3-4fe8-b9a5-48fd50a15a9a}" />

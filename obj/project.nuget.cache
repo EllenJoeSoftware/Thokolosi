@@ -1,8 +1,8 @@
 {
   "version": 2,
-  "dgSpecHash": "tQKdlvS9H44=",
+  "dgSpecHash": "SbykSe+sxQ8=",
   "success": true,
-  "projectFilePath": "c:\\Users\\Wycliffe\\source\\repos\\Agent\\src\\Thokolosi\\Thokolosi_e5uc54y2_wpftmp.csproj",
+  "projectFilePath": "c:\\Users\\Wycliffe\\source\\repos\\Agent\\src\\Thokolosi\\Thokolosi_ewqktl5m_wpftmp.csproj",
   "expectedPackageFiles": [
     "C:\\Users\\Wycliffe\\.nuget\\packages\\bouncycastle.cryptography\\2.7.0\\bouncycastle.cryptography.2.7.0.nupkg.sha512",
     "C:\\Users\\Wycliffe\\.nuget\\packages\\documentformat.openxml\\3.1.0\\documentformat.openxml.3.1.0.nupkg.sha512",

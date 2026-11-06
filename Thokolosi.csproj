@@ -12,8 +12,13 @@
     <RootNamespace>Thokolosi</RootNamespace>
     <ApplicationIcon>Assets\thokolosi.ico</ApplicationIcon>
     <ApplicationManifest>app.manifest</ApplicationManifest>
-    <!-- Per-monitor DPI (replaces the dpiAware/dpiAwareness manifest entries; screenshots and UI Automation need real pixels). -->
-    <ApplicationHighDpiMode>PerMonitorV2</ApplicationHighDpiMode>
+    <!--
+      WFAC010 says to move DPI settings out of app.manifest and use ApplicationHighDpiMode. That advice is for the WinForms
+      SDK, which generates the DPI entries itself. This is a WPF app (WinForms is only used for the tray icon), and WPF reads
+      DPI awareness from the manifest, which is also what screenshots and UI Automation rely on for true pixel coordinates.
+      The per-monitor settings are therefore intentional and stay in app.manifest, and the warning is suppressed here only.
+    -->
+    <NoWarn>$(NoWarn);WFAC010</NoWarn>
     <Version>0.6.0</Version>
     <Product>Thokolosi</Product>
     <Company>EllenJoe Software</Company>
