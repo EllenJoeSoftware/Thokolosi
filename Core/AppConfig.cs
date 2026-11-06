@@ -184,6 +184,10 @@ public class EmailAccount
     public string Address { get; set; } = "";
     public string Username { get; set; } = "";
     public string? PasswordProtected { get; set; }
+
+    /// <summary>Plain password for an outgoing connection; never empty (connect fails with a clear message instead).</summary>
+    public string RequirePassword() => Password is { Length: > 0 } p ? p : throw new InvalidOperationException($"No password saved for {Address} (Settings > Email & Slack).");
+
     public string ImapHost { get; set; } = "imap.gmail.com";
     public int ImapPort { get; set; } = 993;
     public string SmtpHost { get; set; } = "smtp.gmail.com";

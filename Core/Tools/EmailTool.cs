@@ -71,7 +71,8 @@ public class EmailTool : ITool
 
         using var imap = new ImapClient();
         await imap.ConnectAsync(acct.ImapHost, acct.ImapPort, SecureSocketOptions.Auto, ct);
-        await imap.AuthenticateAsync(string.IsNullOrEmpty(acct.Username) ? acct.Address : acct.Username, acct.Password, ct);
+        var loginPassword = acct.RequirePassword();
+            await imap.AuthenticateAsync(string.IsNullOrEmpty(acct.Username) ? acct.Address : acct.Username, loginPassword, ct);
         try
         {
             if (action == "folders")
@@ -129,7 +130,9 @@ public class EmailTool : ITool
         foreach (var m in items.OrderByDescending(m => m.Date))
         {
             var unread = m.Flags.HasValue && !m.Flags.Value.HasFlag(MessageFlags.Seen) ? " [UNREAD]" : "";
-            sb.AppendLine($"uid {m.UniqueId.Id} | {m.Date.LocalDateTime:yyyy-MM-dd HH:mm} | {m.Envelope.From} | {m.Envelope.Subject}{unread}");
+            var from = m.Envelope?.From?.ToString() ?? "(unknown sender)";        // the envelope is always requested, but be safe
+            var subject = m.Envelope?.Subject ?? "(no subject)";
+            sb.AppendLine($"uid {m.UniqueId.Id} | {m.Date.LocalDateTime:yyyy-MM-dd HH:mm} | {from} | {subject}{unread}");
             if (!string.IsNullOrWhiteSpace(m.PreviewText)) sb.AppendLine("    " + Json.Truncate(m.PreviewText.Trim(), 160));
         }
         return sb.ToString();
@@ -144,7 +147,7 @@ public class EmailTool : ITool
         if (msg.Cc.Count > 0) sb.AppendLine($"Cc: {msg.Cc}");
         sb.AppendLine($"Date: {msg.Date.LocalDateTime:yyyy-MM-dd HH:mm}");
         sb.AppendLine($"Subject: {msg.Subject}");
-        var att = msg.Attachments.Select(a => a.ContentDisposition?.FileName ?? a.ContentType.Name).Where(n => n != null).ToList();
+        var att = msg.Attachments.Select(a => a.ContentDisposition?.FileName ?? a.ContentType.Name).Where(n => !string.IsNullOrWhiteSpace(n)).ToList();
         if (att.Count > 0) sb.AppendLine("Attachments: " + string.Join(", ", att));
         sb.AppendLine();
         sb.Append(Json.Truncate(body.Trim(), 30000));
@@ -171,7 +174,8 @@ public class EmailTool : ITool
         {
             using var imap = new ImapClient();
             await imap.ConnectAsync(acct.ImapHost, acct.ImapPort, SecureSocketOptions.Auto, ct);
-            await imap.AuthenticateAsync(string.IsNullOrEmpty(acct.Username) ? acct.Address : acct.Username, acct.Password, ct);
+            var loginPassword = acct.RequirePassword();
+            await imap.AuthenticateAsync(string.IsNullOrEmpty(acct.Username) ? acct.Address : acct.Username, loginPassword, ct);
             var folderName = input.Str("folder", "INBOX");
             var folder = folderName.Equals("INBOX", StringComparison.OrdinalIgnoreCase) ? imap.Inbox : await imap.GetFolderAsync(folderName, ct);
             await folder.OpenAsync(FolderAccess.ReadOnly, ct);
@@ -204,9 +208,11 @@ public class EmailTool : ITool
 
         using var smtp = new SmtpClient();
         await smtp.ConnectAsync(acct.SmtpHost, acct.SmtpPort, SecureSocketOptions.Auto, ct);
-        await smtp.AuthenticateAsync(string.IsNullOrEmpty(acct.Username) ? acct.Address : acct.Username, acct.Password, ct);
+        var sendPassword = acct.RequirePassword();
+        await smtp.AuthenticateAsync(string.IsNullOrEmpty(acct.Username) ? acct.Address : acct.Username, sendPassword, ct);
         await smtp.SendAsync(msg, ct);
         await smtp.DisconnectAsync(true, ct);
         return ToolResult.Text($"Sent '{msg.Subject}' to {msg.To}.");
     }
 }
+

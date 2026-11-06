@@ -377,7 +377,6 @@ C:\Users\Wycliffe\source\repos\Agent\dist\Thokolosi\System.Diagnostics.TraceSour
 C:\Users\Wycliffe\source\repos\Agent\dist\Thokolosi\System.Diagnostics.Tracing.dll
 C:\Users\Wycliffe\source\repos\Agent\dist\Thokolosi\System.Drawing.Primitives.dll
 C:\Users\Wycliffe\source\repos\Agent\dist\Thokolosi\System.Dynamic.Runtime.dll
-C:\Users\Wycliffe\source\repos\Agent\dist\Thokolosi\System.Formats.Asn1.dll
 C:\Users\Wycliffe\source\repos\Agent\dist\Thokolosi\System.Formats.Tar.dll
 C:\Users\Wycliffe\source\repos\Agent\dist\Thokolosi\System.Globalization.Calendars.dll
 C:\Users\Wycliffe\source\repos\Agent\dist\Thokolosi\System.Globalization.Extensions.dll
@@ -541,7 +540,6 @@ C:\Users\Wycliffe\source\repos\Agent\dist\Thokolosi\System.Drawing.dll
 C:\Users\Wycliffe\source\repos\Agent\dist\Thokolosi\System.IO.Packaging.dll
 C:\Users\Wycliffe\source\repos\Agent\dist\Thokolosi\System.Printing.dll
 C:\Users\Wycliffe\source\repos\Agent\dist\Thokolosi\System.Resources.Extensions.dll
-C:\Users\Wycliffe\source\repos\Agent\dist\Thokolosi\System.Security.Cryptography.Pkcs.dll
 C:\Users\Wycliffe\source\repos\Agent\dist\Thokolosi\System.Security.Cryptography.ProtectedData.dll
 C:\Users\Wycliffe\source\repos\Agent\dist\Thokolosi\System.Security.Cryptography.Xml.dll
 C:\Users\Wycliffe\source\repos\Agent\dist\Thokolosi\System.Security.Permissions.dll
@@ -806,6 +804,7 @@ C:\Users\Wycliffe\source\repos\Agent\dist\Thokolosi\DocumentFormat.OpenXml.dll
 C:\Users\Wycliffe\source\repos\Agent\dist\Thokolosi\DocumentFormat.OpenXml.Framework.dll
 C:\Users\Wycliffe\source\repos\Agent\dist\Thokolosi\MailKit.dll
 C:\Users\Wycliffe\source\repos\Agent\dist\Thokolosi\Microsoft.Bcl.AsyncInterfaces.dll
+C:\Users\Wycliffe\source\repos\Agent\dist\Thokolosi\Microsoft.Bcl.Cryptography.dll
 C:\Users\Wycliffe\source\repos\Agent\dist\Thokolosi\Microsoft.Playwright.dll
 C:\Users\Wycliffe\source\repos\Agent\dist\Thokolosi\MimeKit.dll
 C:\Users\Wycliffe\source\repos\Agent\dist\Thokolosi\MQTTnet.dll
@@ -824,5 +823,7 @@ C:\Users\Wycliffe\source\repos\Agent\dist\Thokolosi\UglyToad.PdfPig.Tokenization
 C:\Users\Wycliffe\source\repos\Agent\dist\Thokolosi\UglyToad.PdfPig.Tokens.dll
 C:\Users\Wycliffe\source\repos\Agent\dist\Thokolosi\UglyToad.PdfPig.dll
 C:\Users\Wycliffe\source\repos\Agent\dist\Thokolosi\QRCoder.dll
+C:\Users\Wycliffe\source\repos\Agent\dist\Thokolosi\System.Formats.Asn1.dll
+C:\Users\Wycliffe\source\repos\Agent\dist\Thokolosi\System.Security.Cryptography.Pkcs.dll
 C:\Users\Wycliffe\source\repos\Agent\dist\Thokolosi\System.Speech.dll
 C:\Users\Wycliffe\source\repos\Agent\dist\Thokolosi\Whisper.net.dll
