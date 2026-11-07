@@ -73,6 +73,18 @@
         </Grid.RowDefinitions>
 
         <TabControl Background="#1B1726" BorderBrush="#2E2840" Padding="16">
+            <!-- ================= Head (persona) ================= -->
+            <TabItem Header="Head">
+                <ScrollViewer>
+                    <StackPanel>
+                        <TextBlock Style="{StaticResource H}" Text="Which head Thokolosi wears" Margin="0,0,0,4"/>
+                        <TextBlock Style="{StaticResource Hint}" Text="Click a head to use it straight away. You can also right-click the head itself for this list. Each head is a transparent PNG in Assets\personas, rendered by tools\render-personas.ps1 - add your own by dropping a 900x1050 PNG in that folder."/>
+                        <WrapPanel x:Name="PersonaPanel" Orientation="Horizontal"/>
+                        <TextBlock Style="{StaticResource Hint}" x:Name="PersonaHint" Margin="0,10,0,0"/>
+                    </StackPanel>
+                </ScrollViewer>
+            </TabItem>
+
             <!-- ================= General ================= -->
             <TabItem Header="General">
                 <ScrollViewer>

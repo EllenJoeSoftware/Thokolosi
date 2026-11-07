@@ -23,6 +23,9 @@ public class AppConfig
     public bool StartWithWindows { get; set; } = true;
     public int MaxToolIterations { get; set; } = 40;
 
+    /// <summary>Which head Thokolosi wears (see Core.Personas.All). Blank = the original.</summary>
+    public string Persona { get; set; } = "thokolosi";
+
     /// <summary>Folders with your code/repos. Mentioned to Claude so it knows where to look.</summary>
     public List<string> CodeFolders { get; set; } = new()
     {
@@ -288,9 +291,10 @@ public class HotkeySettings
 public class PhoneSettings
 {
     public bool Enabled { get; set; } = true;
-    // Firebase project identifiers (not secrets). Set in Settings > Phone.
-    public string ApiKey { get; set; } = "AIzaSyCChfsVaXicAN7OIwo9q9PyJT8by3aTXOQ";
-    public string DatabaseUrl { get; set; } = "https://thokolosi-default-rtdb.europe-west1.firebasedatabase.app";
+    // Firebase project identifiers. The web API key is filled in on first run (Settings > Phone) and kept in
+    // %APPDATA%\Thokolosi\config.json, which is not committed; it is not stored in the source.
+    public string ApiKey { get; set; } = "";
+    public string DatabaseUrl { get; set; } = "";
     public string ProjectId { get; set; } = "thokolosi";
     // This PC's anonymous Firebase identity (kept so pairings survive restarts).
     public string? PcUid { get; set; }
@@ -341,3 +345,4 @@ public class ScheduledJob
     public bool Enabled { get; set; } = true;
     public DateTime? LastRun { get; set; }
 }
+

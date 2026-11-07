@@ -18,6 +18,10 @@ namespace Thokolosi;
 
 public partial class App : Application, INotifier
 {
+    static bool _errorShowing;
+    static string? _lastError;
+    static DateTime _lastErrorAt;
+
     static Mutex? _single;
     WinForms.NotifyIcon? _tray;
     WinForms.ToolStripMenuItem? _autoItem, _silentItem, _watchItem, _autoJoinItem, _notesItem, _spendItem, _phoneItem;
@@ -52,8 +56,13 @@ public partial class App : Application, INotifier
         DispatcherUnhandledException += (_, ex) =>
         {
             ActivityLog.Write("CRASH", ex.Exception.ToString());
-            MessageBox.Show(ex.Exception.Message, "Thokolosi error", MessageBoxButton.OK, MessageBoxImage.Error);
             ex.Handled = true;
+            // One dialog at a time, and the same error at most once a minute, so a repeating fault can't flood the screen.
+            var msg = ex.Exception.InnerException?.Message ?? ex.Exception.Message;
+            if (_errorShowing || (msg == _lastError && DateTime.Now - _lastErrorAt < TimeSpan.FromMinutes(1))) return;
+            _errorShowing = true; _lastError = msg; _lastErrorAt = DateTime.Now;
+            try { MessageBox.Show(msg + "\n\nDetails are in the activity log.", "Thokolosi error", MessageBoxButton.OK, MessageBoxImage.Error); }
+            finally { _errorShowing = false; _lastErrorAt = DateTime.Now; }
         };
         TaskScheduler.UnobservedTaskException += (_, ex) => { ActivityLog.Write("ERROR", ex.Exception.ToString()); ex.SetObserved(); };
 

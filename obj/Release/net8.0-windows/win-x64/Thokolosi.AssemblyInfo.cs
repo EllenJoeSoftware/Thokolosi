@@ -13,7 +13,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("EllenJoe Software")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Release")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("0.6.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("0.6.0+e22f5727edbe946bb8d93ce62d2102c39ebe4bda")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("0.6.0+89a7a2d145768c0a02baf5724b5e13f51d6dd083")]
 [assembly: System.Reflection.AssemblyProductAttribute("Thokolosi")]
 [assembly: System.Reflection.AssemblyTitleAttribute("Thokolosi")]
 [assembly: System.Reflection.AssemblyVersionAttribute("0.6.0.0")]

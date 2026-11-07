@@ -49,6 +49,9 @@
 
   <ItemGroup>
     <Resource Include="Assets\thokolosi.ico" />
+    <Resource Include="Assets\face-hd.png" />
+    <Resource Include="Assets\personas\*.png" />
   </ItemGroup>
 
 </Project>
+

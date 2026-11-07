@@ -32,15 +32,34 @@ public static class LinkText
         if (d is not TextBlock tb) return;
         tb.Inlines.Clear();
         var text = e.NewValue as string ?? "";
+        try { AddInlines(tb, text); }
+        catch (Exception ex)
+        {
+            // Never let one odd message break the chat: fall back to plain text.
+            ActivityLog.Write("LINK", "Showing a message without links: " + ex.Message);
+            tb.Inlines.Clear();
+            tb.Inlines.Add(new Run(text));
+        }
+    }
+
+    static void AddInlines(TextBlock tb, string text)
+    {
         int pos = 0;
         foreach (Match m in Pattern.Matches(text))
         {
             if (m.Index > pos) tb.Inlines.Add(new Run(text[pos..m.Index]));
             var url = m.Groups["md"].Success ? m.Groups["md"].Value : m.Groups["url"].Value;
             var label = m.Groups["label"].Success ? m.Groups["label"].Value : url;
+            // Text that only looks like a link (e.g. "https://" with a bad host): keep it as plain text.
+            if (!Uri.TryCreate(url, UriKind.Absolute, out var uri) || (uri.Scheme != Uri.UriSchemeHttp && uri.Scheme != Uri.UriSchemeHttps))
+            {
+                tb.Inlines.Add(new Run(m.Value));
+                pos = m.Index + m.Length;
+                continue;
+            }
             var link = new Hyperlink(new Run(label))
             {
-                NavigateUri = new Uri(url),
+                NavigateUri = uri,
                 ToolTip = url,
                 Foreground = LinkBrush,
                 TextDecorations = TextDecorations.Underline,

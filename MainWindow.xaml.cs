@@ -3,6 +3,7 @@ using System.IO;
 using System.Text.Json.Nodes;
 using System.Text.RegularExpressions;
 using System.Windows;
+using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Media;
 using Thokolosi.Core;
@@ -48,6 +49,7 @@ public partial class MainWindow : Window
         agent.ApprovalHandler = AskApprovalAsync;
 
         LoadPreviousChat();
+        ApplyPersona();
         RefreshModes();
         Deactivated += (_, _) => { /* stay open; hide with the button or tray icon */ };
     }
@@ -235,6 +237,116 @@ public partial class MainWindow : Window
     {
         if (Dispatcher.CheckAccess()) Add("activity", text);
         else Dispatcher.BeginInvoke(() => Add("activity", text));
+    }
+
+    // ---------- head design: fold the chat, drag by the head, popups by the left ear ----------
+
+    bool _chatOpen = true;
+    Point _headDownAt;
+    bool _headDragged;
+
+    /// <summary>Put the chosen face on the head (from config). Safe to call any time.</summary>
+    public void ApplyPersona()
+    {
+        var id = AppRef.Config.Persona;
+        HeadImage.Source = Personas.Image(id);
+        var p = Personas.Get(id);
+        Title = "Thokolosi";
+        ActivityLog.Write("PERSONA", $"Head set to {p.Name} ({p.Id}).");
+    }
+
+    /// <summary>Right-click the head: pick a face or open settings.</summary>
+    void Head_ContextMenu(object sender, ContextMenuEventArgs e)
+    {
+        HeadMenu.Items.Clear();
+        var current = Personas.Get(AppRef.Config.Persona).Id;
+        foreach (var p in Personas.All)
+        {
+            var item = new MenuItem
+            {
+                Header = p.Name,
+                IsCheckable = true,
+                IsChecked = p.Id == current,
+                ToolTip = p.Blurb,
+                Tag = p.Id,
+            };
+            item.Click += (_, _) => { SetPersona(p.Id); };
+            HeadMenu.Items.Add(item);
+        }
+        HeadMenu.Items.Add(new Separator());
+        var more = new MenuItem { Header = "More heads in Settings..." };
+        more.Click += (_, _) => AppRef.OpenSettings();
+        HeadMenu.Items.Add(more);
+    }
+
+    /// <summary>Switch heads straight away and remember the choice.</summary>
+    public void SetPersona(string id)
+    {
+        if (Personas.Get(id).Id == Personas.Get(AppRef.Config.Persona).Id && HeadImage.Source != null) return;
+        AppRef.Config.Persona = Personas.Get(id).Id;
+        AppRef.Config.Save();
+        ApplyPersona();
+    }
+
+    /// <summary>Fold the chat panel away while the head stays visible; call again to bring it back.</summary>
+    public void ChatToggle_Click(object sender, RoutedEventArgs e) => SetChatOpen(!_chatOpen);
+
+    public void SetChatOpen(bool open)
+    {
+        _chatOpen = open;
+        ChatPanel.Visibility = open ? Visibility.Visible : Visibility.Collapsed;
+        ChatConnector.Visibility = open ? Visibility.Visible : Visibility.Collapsed;
+        ChatToggleButton.Content = open ? "\uE70E" : "\uE70D";     // chevron up / down
+        Height = open ? 740 : 240;                                  // window shrinks to just the head
+    }
+
+    void Head_MouseDown(object sender, MouseButtonEventArgs e)
+    {
+        if (e.ButtonState != MouseButtonState.Pressed) return;
+        _headDownAt = e.GetPosition(this);
+        _headDragged = false;
+        DragMove();                                                 // blocks until the drag ends
+        _headDragged = true;
+    }
+
+    void Head_Click(object sender, MouseButtonEventArgs e)
+    {
+        if (!_headDragged) SetChatOpen(!_chatOpen);                 // a click (no drag) toggles the chat
+        _headDragged = false;
+    }
+
+    /// <summary>A box beside the left ear. Newest on top, older ones below; at most three are kept.</summary>
+    public void AddPopup(string title, string body, Action? onClick = null)
+    {
+        if (!Dispatcher.CheckAccess()) { Dispatcher.BeginInvoke(() => AddPopup(title, body, onClick)); return; }
+        var box = new Border
+        {
+            Background = (Brush)new BrushConverter().ConvertFromString("#F2241F33")!,
+            BorderBrush = (Brush)new BrushConverter().ConvertFromString("#FFD65A")!,
+            BorderThickness = new Thickness(1.6),
+            CornerRadius = new CornerRadius(10),
+            Padding = new Thickness(10, 7, 10, 8),
+            Margin = new Thickness(0, 0, 6, 6),
+            Cursor = System.Windows.Input.Cursors.Hand,
+        };
+        var stack = new StackPanel();
+        stack.Children.Add(new TextBlock
+        {
+            Text = title, Foreground = (Brush)new BrushConverter().ConvertFromString("#FFD65A")!,
+            FontSize = 11.5, FontWeight = FontWeights.SemiBold, TextWrapping = TextWrapping.Wrap,
+        });
+        if (!string.IsNullOrWhiteSpace(body))
+            stack.Children.Add(new TextBlock
+            {
+                Text = body.Length > 160 ? body[..160] + "..." : body,
+                Foreground = (Brush)new BrushConverter().ConvertFromString("#EDE9F7")!,
+                FontSize = 11, TextWrapping = TextWrapping.Wrap, Margin = new Thickness(0, 3, 0, 0),
+            });
+        box.Child = stack;
+        if (onClick != null) box.MouseLeftButtonUp += (_, _) => onClick();
+        Popups.Children.Insert(0, box);                             // newest on top
+        while (Popups.Children.Count > 3) Popups.Children.RemoveAt(Popups.Children.Count - 1);
+        _ = Task.Delay(TimeSpan.FromSeconds(45)).ContinueWith(_ => Dispatcher.BeginInvoke(() => Popups.Children.Remove(box)));
     }
 
     void AutoToggle_Click(object sender, RoutedEventArgs e) => AppRef.SetAutoMode(AutoToggle.IsChecked == true);
@@ -475,3 +587,4 @@ public partial class MainWindow : Window
             _items.Add(new ChatItem("assistant", "Hi, I'm Thokolosi. Tell me what to do on this PC: run commands, find files, browse the web, work in your repos. Set my job in Settings."));
     }
 }
+

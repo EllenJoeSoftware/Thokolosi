@@ -2,6 +2,7 @@ using System.Diagnostics;
 using System.IO;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Media;
 using Thokolosi.Core;
 using Thokolosi.Core.Mcp;
 using Thokolosi.Core.Voice;
@@ -29,6 +30,9 @@ public partial class SettingsWindow : Window
         OpenCodeHint.Text = string.IsNullOrEmpty(cfg.OpenCodeApiKey)
             ? "For 'opencode-go/...' models. Get it at opencode.ai > your workspace > Go > API keys. Stored encrypted. Either key on its own is enough."
             : "An OpenCode Go key is saved. Leave blank to keep it, or paste a new one to replace it.";
+
+        // Head (personas)
+        BuildPersonaPicker();
 
         // Job
         JobBox.Text = AppConfig.LoadJob();
@@ -132,8 +136,80 @@ public partial class SettingsWindow : Window
         _loading = false;
     }
 
-    // ---------- Passwords (saved immediately, encrypted with Windows DPAPI) ----------
+    // ---------- Head (persona picker) ----------
 
+    readonly List<Border> _personaTiles = new();
+
+    void BuildPersonaPicker()
+    {
+        PersonaPanel.Children.Clear();
+        _personaTiles.Clear();
+        var current = Personas.Get(App.Current.Config.Persona).Id;
+
+        foreach (var p in Personas.All)
+        {
+            var img = new Image
+            {
+                Source = Personas.Image(p.Id),
+                Width = 96,
+                Height = 112,
+                Stretch = Stretch.Uniform,
+            };
+            RenderOptions.SetBitmapScalingMode(img, BitmapScalingMode.HighQuality);
+
+            var caption = new TextBlock
+            {
+                Text = p.Name,
+                Foreground = (Brush)new BrushConverter().ConvertFromString("#EDE9F7")!,
+                FontSize = 11.5,
+                HorizontalAlignment = HorizontalAlignment.Center,
+                Margin = new Thickness(0, 4, 0, 0),
+            };
+
+            var stack = new StackPanel();
+            stack.Children.Add(img);
+            stack.Children.Add(caption);
+
+            var tile = new Border
+            {
+                Tag = p.Id,
+                Child = stack,
+                Margin = new Thickness(0, 0, 10, 10),
+                Padding = new Thickness(6),
+                CornerRadius = new CornerRadius(10),
+                BorderThickness = new Thickness(1.6),
+                Cursor = System.Windows.Input.Cursors.Hand,
+                ToolTip = p.Blurb,
+            };
+            tile.MouseLeftButtonUp += (s, _) => { if (((Border)s).Tag is string id) PickPersona(id); };
+            _personaTiles.Add(tile);
+            PersonaPanel.Children.Add(tile);
+        }
+        PaintPersonaTiles(current);
+    }
+
+    void PickPersona(string id)
+    {
+        var chosen = Personas.Get(id);
+        App.Current.Config.Persona = chosen.Id;
+        App.Current.Config.Save();
+        App.Current.Chat.SetPersona(chosen.Id);
+        PaintPersonaTiles(chosen.Id);
+        PersonaHint.Text = $"Thokolosi now wears the {chosen.Name} head. " + chosen.Blurb;
+    }
+
+    void PaintPersonaTiles(string current)
+    {
+        foreach (var tile in _personaTiles)
+        {
+            var on = string.Equals(tile.Tag as string, current, StringComparison.OrdinalIgnoreCase);
+            tile.Background = (Brush)new BrushConverter().ConvertFromString(on ? "#31284A" : "#1F1A2C")!;
+            tile.BorderBrush = (Brush)new BrushConverter().ConvertFromString(on ? "#FFD65A" : "#2E2840")!;
+        }
+        PersonaHint.Text = Personas.Get(current).Blurb;
+    }
+
+    // ---------- Passwords (saved immediately, encrypted with Windows DPAPI) ----------
     void RefreshVault(string? select = null)
     {
         VaultList.ItemsSource = Vault.Load().Select(e => e.Name).ToList();
